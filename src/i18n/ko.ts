@@ -1,6 +1,8 @@
 /**
  * 화면 문자열을 한곳에 모은다. 영문 UI를 추가할 때 같은 모양의 en.ts를 만든다.
  */
+import { josa, particle, quoted } from './josa';
+
 export const ko = {
   app: {
     name: '생키 메이커',
@@ -38,12 +40,15 @@ export const ko = {
     memo: '메모',
   },
   issue: {
-    required: (field: string) => `${field}을(를) 입력하세요.`,
-    notNumber: (raw: string) => `"${raw}"은(는) 숫자가 아닙니다. 숫자만 입력하세요.`,
+    required: (field: string) => `${josa(field, '을/를')} 입력하세요.`,
+    notNumber: (raw: string) => `${quoted(raw, '은/는')} 숫자가 아닙니다. 숫자만 입력하세요.`,
+    /** "40원", "1,000 명"처럼 숫자 뒤에 단위를 붙인 경우 */
+    notNumberWithUnit: (raw: string, suffix: string) =>
+      `${quoted(raw, '은/는')} 숫자가 아닙니다. "${suffix}"${particle(suffix, '을/를')} 빼고 숫자만 입력하세요. 단위는 [설정 → 값의 단위]에 한 번만 적습니다.`,
     notPositive: '값은 0보다 커야 합니다.',
     notFinite: '값이 너무 큽니다. 유한한 숫자를 입력하세요.',
     selfLoop: (name: string) =>
-      `"${name}"이(가) 자기 자신으로 이어집니다. 이 행은 다이어그램에서 제외됩니다.`,
+      `${quoted(name, '이/가')} 자기 자신으로 이어집니다. 이 행은 다이어그램에서 제외됩니다.`,
     duplicateMerged: (source: string, target: string, count: number) =>
       `"${source} → ${target}" 연결이 ${count}번 나와 하나로 합산했습니다. 설정에서 별도 흐름으로 바꿀 수 있습니다.`,
     duplicateSeparate: (source: string, target: string, count: number) =>
@@ -51,7 +56,7 @@ export const ko = {
     cycle: (path: string[]) =>
       `순환 연결이 있어 다이어그램을 그릴 수 없습니다: ${path.join(' → ')}. 이 경로의 한 행을 고치세요.`,
     imbalance: (name: string, inflow: string, outflow: string) =>
-      `"${name}"으로 들어오는 값(${inflow})과 나가는 값(${outflow})이 다릅니다.`,
+      `${quoted(name, '으로/로')} 들어오는 값(${inflow})과 나가는 값(${outflow})이 다릅니다.`,
     disconnected: (count: number) => `서로 이어지지 않은 다이어그램 묶음이 ${count}개 있습니다.`,
     rowLimit: (max: number) => `최대 ${max}행까지 입력할 수 있습니다.`,
     rowWarn: (count: number) => `행이 ${count}개입니다. 미리보기가 느려질 수 있습니다.`,

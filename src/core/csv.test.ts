@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   checkMapping,
+  looksLikeHeaderRow,
   columnNames,
   guessMapping,
   parseCsv,
@@ -201,4 +202,16 @@ describe('serializeCsv / 왕복(A6)', () => {
       expect(plain(rowsOf(csv))).toEqual(plain(doc.rows));
     },
   );
+});
+
+describe('looksLikeHeaderRow', () => {
+  it.each([
+    [['출발 노드', '도착 노드', '값'], true],
+    [['source', 'target'], true],
+    [['출발지', '값(명)', '비고'], true],
+    [['전체 예산', '교육', '40'], false],
+    [['값'], false],
+  ])('%j → %s', (cells, expected) => {
+    expect(looksLikeHeaderRow(cells)).toBe(expected);
+  });
 });

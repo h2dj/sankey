@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { ko } from '../../i18n/ko';
 import { useLayout, type PanelTab } from '../../state/layout';
+import { track } from '../../state/observe';
 import styles from './PanelTabs.module.css';
 
 const TABS: PanelTab[] = ['data', 'preview', 'settings'];
@@ -26,6 +27,7 @@ export function PanelTabs({ errorCount }: Props) {
     if (!next) return;
     e.preventDefault();
     setTab(next);
+    track('tab_change', { tab: next });
     refs.current[next]?.focus();
   };
 
@@ -45,7 +47,10 @@ export function PanelTabs({ errorCount }: Props) {
           tabIndex={tab === t ? 0 : -1}
           className={styles.tab}
           aria-label={t === 'data' && errorCount > 0 ? `데이터, 오류 ${errorCount}건` : undefined}
-          onClick={() => setTab(t)}
+          onClick={() => {
+            setTab(t);
+            track('tab_change', { tab: t });
+          }}
         >
           {ko.panel[t]}
           {t === 'data' && errorCount > 0 && (

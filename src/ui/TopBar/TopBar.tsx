@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SAMPLES, loadSample } from '../../core/samples';
 import { ko } from '../../i18n/ko';
 import { editorStore, useEditor } from '../../state/store';
+import { track } from '../../state/observe';
 import { SaveStatus } from './SaveStatus';
 import styles from './TopBar.module.css';
 
@@ -28,16 +29,25 @@ export function TopBar({ onNew, onImport, onExport }: Props) {
         <SaveStatus />
       </div>
       <div className={styles.actions}>
-        <button type="button" onClick={undo} disabled={!canUndo} title={`실행 취소 (${MOD}Z)`}>
-          실행 취소
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+          title={`실행 취소 (${MOD}Z)`}
+          aria-label="실행 취소"
+        >
+          <span aria-hidden="true">↶</span>
+          <span className={styles.label}> 실행 취소</span>
         </button>
         <button
           type="button"
           onClick={redo}
           disabled={!canRedo}
           title={`다시 실행 (${MOD}Shift+Z)`}
+          aria-label="다시 실행"
         >
-          다시 실행
+          <span aria-hidden="true">↷</span>
+          <span className={styles.label}> 다시 실행</span>
         </button>
         <button type="button" onClick={onNew}>
           {ko.app.newDiagram}
@@ -60,7 +70,13 @@ export function TopBar({ onNew, onImport, onExport }: Props) {
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => replaceDoc(loadSample(sampleId))}>
+          <button
+            type="button"
+            onClick={() => {
+              replaceDoc(loadSample(sampleId));
+              track('sample_loaded', { sample: sampleId });
+            }}
+          >
             예시 불러오기
           </button>
         </div>

@@ -4,6 +4,7 @@ import { LIMITS, createRow } from '../core/config';
 import { applyPaste, insertRow, removeRow, updateCell } from '../core/rows';
 import { DEFAULT_SAMPLE_ID, loadSample } from '../core/samples';
 import { initialDoc } from './initialDoc';
+import { track } from './observe';
 import type { DiagramDoc, DiagramMeta, Row, RowField, Settings } from '../core/types';
 
 const HISTORY_LIMIT = 100;
@@ -73,22 +74,28 @@ export function createEditorStore(
         const row = doc.rows.find((r) => r.id === rowId);
         if (!row || (row[field] ?? '') === value) return;
         commit(withRows(updateCell(doc.rows, rowId, field, value)), `cell:${rowId}:${field}`);
+        track('edit');
       },
 
       addRow(afterId) {
         const res = insertRow(get().doc.rows, afterId, LIMITS.maxRows);
         if (!res) return null;
         commit(withRows(res.rows));
+        track('row_add');
         return res.row.id;
       },
 
       deleteRow(rowId) {
         commit(withRows(removeRow(get().doc.rows, rowId)));
+        track('row_delete');
       },
 
       paste(startRowId, startField, matrix) {
         const res = applyPaste(get().doc.rows, startRowId, startField, matrix, LIMITS.maxRows);
-        if (res.touchedRowIds.length > 0) commit(withRows(res.rows));
+        if (res.touchedRowIds.length > 0) {
+          commit(withRows(res.rows));
+          track('paste', { rows: res.touchedRowIds.length });
+        }
         return { droppedRows: res.droppedRows };
       },
 
@@ -96,6 +103,7 @@ export function createEditorStore(
         const { doc } = get();
         const keys = Object.keys(patch).sort().join(',');
         commit({ ...doc, meta: { ...doc.meta, ...patch } }, `meta:${keys}`);
+        track('settings_change', { key: keys });
       },
 
       setSettings(patch) {
@@ -103,6 +111,7 @@ export function createEditorStore(
         // 슬라이더·색 선택기를 끄는 동안의 연속 변경은 한 번의 실행 취소로 묶는다.
         const keys = Object.keys(patch).sort().join(',');
         commit({ ...doc, settings: { ...doc.settings, ...patch } }, `settings:${keys}`);
+        track('settings_change', { key: keys });
       },
 
       importRows(rows, mode, unit) {
@@ -128,6 +137,7 @@ export function createEditorStore(
         const { doc, past, future } = get();
         const prev = past.at(-1);
         if (!prev) return;
+        track('undo');
         set({ doc: prev, past: past.slice(0, -1), future: [doc, ...future], lastEdit: null });
       },
 
@@ -135,6 +145,7 @@ export function createEditorStore(
         const { doc, past, future } = get();
         const next = future[0];
         if (!next) return;
+        track('redo');
         set({ doc: next, past: [...past, doc], future: future.slice(1), lastEdit: null });
       },
     };

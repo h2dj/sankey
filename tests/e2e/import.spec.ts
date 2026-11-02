@@ -89,7 +89,7 @@ test('가져온 뒤 고칠 오류 수를 미리 알려 준다', async ({ page })
   await openAndPick(page, 'semicolon.csv');
   await expect(dialog(page).getByTestId('import-summary')).toContainText('입력 오류가 1건');
   await dialog(page).getByRole('button', { name: '가져오기' }).click();
-  await expect(issueSummary(page)).toContainText('"1.234,5"은(는) 숫자가 아닙니다');
+  await expect(issueSummary(page)).toContainText('"1.234,5"는 숫자가 아닙니다');
 });
 
 test('데이터 영역에 파일을 끌어다 놓으면 가져오기 창이 열린다', async ({ page }) => {

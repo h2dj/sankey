@@ -138,3 +138,11 @@
 .tooltipFlip {
   transform: translate(calc(-100% - 12px), 12px);
 }
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}

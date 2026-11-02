@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { ChartModel } from '../../core/chartModel';
 import type { BuildResult, DiagramMeta, Row, Settings } from '../../core/types';
 import { selectionStore, useSelection, type Selection } from '../../state/selection';
 import { useElementWidth } from '../../hooks/useElementWidth';
+import { track } from '../../state/observe';
 import { focusCell } from '../focus';
 import { ZOOM_STEPS, linkKey, nodeKey, splitKey, type ItemKey } from './items';
 import { SankeyChart, type ChartInteraction } from './SankeyChart';
@@ -16,6 +17,8 @@ interface Props {
   meta: DiagramMeta;
   settings: Settings;
   rows: readonly Row[];
+  /** 그릴 것이 없을 때 보일 다음 행동(가져오기·예시) */
+  emptyActions?: ReactNode;
   /** 미리보기 영역의 너비(px). 차트를 이 너비로 그려 글자 크기가 화면에서도 그대로 보이게 한다. */
   onWidthChange?(width: number): void;
 }
@@ -29,7 +32,14 @@ export function Preview({ onWidthChange, ...props }: Props) {
   );
 }
 
-function PreviewBody({ graph, model, meta, settings, rows }: Omit<Props, 'onWidthChange'>) {
+function PreviewBody({
+  graph,
+  model,
+  meta,
+  settings,
+  rows,
+  emptyActions,
+}: Omit<Props, 'onWidthChange'>) {
   if (!graph.drawable || !model) {
     const blocking = graph.issues.find((i) => i.code === 'CYCLE');
     return (
@@ -40,7 +50,10 @@ function PreviewBody({ graph, model, meta, settings, rows }: Omit<Props, 'onWidt
             <p>{blocking.message}</p>
           </>
         ) : (
-          <p>출발 노드, 도착 노드, 값을 입력하면 다이어그램이 나타납니다.</p>
+          <>
+            <p>출발 노드, 도착 노드, 값을 입력하면 다이어그램이 나타납니다.</p>
+            {emptyActions && <div className={styles.emptyActions}>{emptyActions}</div>}
+          </>
         )}
       </div>
     );
@@ -107,6 +120,7 @@ function InteractiveChart({
 
   const activate = (key: ItemKey) => {
     const [kind, id] = splitKey(key);
+    track('chart_select', { kind });
     if (kind === 'link') {
       const l = linkById.get(id);
       if (!l) return;

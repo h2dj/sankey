@@ -20,6 +20,12 @@ export function Dialog({ title, onClose, children, footer }: Props) {
     const el = ref.current;
     const opener = document.activeElement as HTMLElement | null;
     el?.showModal();
+    // showModal은 첫 초점 대상(머리글의 닫기 버튼)에 초점을 준다. 본문에서 시작하도록 옮긴다:
+    // data-autofocus가 있으면 그것, 없으면 본문의 첫 입력 요소.
+    const first = el?.querySelector<HTMLElement>(
+      `[data-autofocus], .${styles.body} :is(input:not([type=hidden]):not([tabindex="-1"]), select, textarea, button:not([hidden]))`,
+    );
+    first?.focus();
     return () => {
       if (el?.open) el.close();
       opener?.focus?.();

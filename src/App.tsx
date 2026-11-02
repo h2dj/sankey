@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildGraph } from './core/buildGraph';
 import { DEFAULT_CHART_WIDTH, buildChartModel } from './core/chartModel';
 import { LIMITS } from './core/config';
+import { DEFAULT_SAMPLE_ID, loadSample } from './core/samples';
 import { useDebounced } from './hooks/useDebounced';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useLayout, type PanelTab } from './state/layout';
@@ -21,6 +22,10 @@ import { TopBar } from './ui/TopBar/TopBar';
 import { ExportDialog } from './ui/ExportDialog/ExportDialog';
 import { ImportDialog } from './ui/ImportDialog/ImportDialog';
 import { Toast } from './ui/Toast/Toast';
+import { ObservePanel } from './ui/ObservePanel/ObservePanel';
+import { issueKey } from './core/observe';
+import { track } from './state/observe';
+import type { BuildResult } from './core/types';
 import { NewDiagramDialog } from './ui/TopBar/NewDiagramDialog';
 
 /** 이보다 좁은 화면에서는 이 폭으로 그려 축소해 보인다(레이블 겹침 방지). */
@@ -52,6 +57,10 @@ export function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const openImport = () => {
+    setDroppedFile(null);
+    setImportOpen(true);
+  };
 
   // 960px 미만: 데이터·미리보기·설정을 탭으로 나눈다(T4.2).
   const narrow = useMediaQuery('(max-width: 959px)');
@@ -64,6 +73,7 @@ export function App() {
 
   useUndoShortcuts();
   useAutosave();
+  useGraphTracking(graph);
 
   return (
     <div className="app">
@@ -72,10 +82,7 @@ export function App() {
       </a>
       <TopBar
         onNew={() => setNewOpen(true)}
-        onImport={() => {
-          setDroppedFile(null);
-          setImportOpen(true);
-        }}
+        onImport={openImport}
         onExport={() => setExportOpen(true)}
       />
       {narrow && <PanelTabs errorCount={errorCount} />}
@@ -113,6 +120,22 @@ export function App() {
             settings={settled.settings}
             rows={settled.rows}
             onWidthChange={setPreviewWidth}
+            emptyActions={
+              <>
+                <button type="button" onClick={openImport}>
+                  CSV 가져오기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editorStore.getState().replaceDoc(loadSample(DEFAULT_SAMPLE_ID));
+                    track('sample_loaded', { sample: DEFAULT_SAMPLE_ID, from: 'empty' });
+                  }}
+                >
+                  예시 보기
+                </button>
+              </>
+            }
           />
         </section>
         <section className="panel panel--settings" {...panelProps('settings')}>
@@ -136,6 +159,7 @@ export function App() {
           onExportFirst={() => setExportOpen(true)}
         />
       )}
+      <ObservePanel />
       <Toast />
     </div>
   );
@@ -166,7 +190,30 @@ function useUndoShortcuts() {
 function useAutosave() {
   useEffect(() => {
     const stop = startAutosave(browserStorage(), startup.load);
+    if (startup.load.status === 'ok') track('restored');
     if (startup.load.status === 'invalid') announce(ko.save.invalid);
     return stop;
   }, []);
+}
+
+/**
+ * 관찰 모드용: 다이어그램이 (다시) 그려진 때와 오류가 생기고 풀린 때를 기록한다.
+ * 문제 내용(문장·이름)은 남기지 않고 코드만 남긴다.
+ */
+function useGraphTracking(graph: BuildResult) {
+  const prev = useRef<{ drawable: boolean; errors: Map<string, string> } | null>(null);
+  useEffect(() => {
+    const errors = new Map(
+      graph.issues.filter((i) => i.level === 'error').map((i) => [issueKey(i), i.code]),
+    );
+    const before = prev.current;
+    if (graph.drawable && !before?.drawable) {
+      track('chart_rendered', { nodes: graph.nodes.length, links: graph.links.length });
+    }
+    if (before) {
+      for (const [k, code] of errors) if (!before.errors.has(k)) track('error_shown', { code });
+      for (const [k, code] of before.errors) if (!errors.has(k)) track('error_resolved', { code });
+    }
+    prev.current = { drawable: graph.drawable, errors };
+  }, [graph]);
 }

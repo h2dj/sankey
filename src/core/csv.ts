@@ -146,6 +146,12 @@ function matchHeader(header: readonly string[]) {
   return { found, unit };
 }
 
+/** 열 이름 줄로 보이는지(출발·도착·값 중 둘 이상의 열 이름이 있음). 표에 붙여넣을 때도 쓴다. */
+export function looksLikeHeaderRow(cells: readonly string[]): boolean {
+  const { found } = matchHeader(cells);
+  return [found.source, found.target, found.value].filter((v) => v !== undefined).length >= 2;
+}
+
 const isNumeric = (s: string | undefined) => s !== undefined && parseValue(s).ok;
 /** 부호와 관계없이 숫자 모양인지(수식 보호 판단용) */
 const looksNumeric = (s: string) => /^[+-]?(\d[\d,]*\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s.trim());

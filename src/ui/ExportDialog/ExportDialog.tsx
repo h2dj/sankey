@@ -3,6 +3,7 @@ import { safeFilename } from '../../core/filename';
 import { downloadBlob } from '../../export/download';
 import { exportDiagram, type ExportFormat, type ExportOptions } from '../../export/exportDiagram';
 import { announce } from '../../state/announce';
+import { track } from '../../state/observe';
 import { editorStore } from '../../state/store';
 import { Dialog } from '../Dialog/Dialog';
 import { Radio } from '../SettingsPanel/controls';
@@ -61,12 +62,19 @@ export function ExportDialog({ onClose, drawable, previewWidth }: Props) {
         embedFont,
       });
       downloadBlob(result.blob, result.filename);
+      track('export', {
+        format: effectiveFormat,
+        scale: effectiveFormat === 'png' ? scale : 0,
+        width: chartWidth,
+        header: includeHeader,
+      });
       lastPrefs = { format, width, includeHeader, scale, transparent, embedFont };
       const size = result.size ? ` (${result.size.width}×${result.size.height}px)` : '';
       announce(`${result.filename}${size} 파일을 내려받았습니다.`);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      track('export_fail', { format: effectiveFormat });
     } finally {
       setBusy(false);
     }

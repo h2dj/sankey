@@ -77,7 +77,7 @@ export function validate(
             ? ko.issue.notPositive
             : parsed.code === 'NOT_FINITE'
               ? ko.issue.notFinite
-              : ko.issue.notNumber(row.value.trim());
+              : notNumberMessage(row.value.trim());
         issues.push({ level: 'error', code: parsed.code, rowId: row.id, field: 'value', message });
       }
     }
@@ -111,4 +111,10 @@ export function validate(
   }
 
   return { issues, validRows };
+}
+
+/** "40원", "1,000 명", "35%"처럼 숫자 뒤에 단위를 붙였으면 단위를 빼라고 안내한다. */
+function notNumberMessage(raw: string): string {
+  const m = /^[+-]?[\d][\d,]*(?:\.\d+)?\s*([^\d\s][^\d]*)$/.exec(raw);
+  return m ? ko.issue.notNumberWithUnit(raw, m[1]!.trim()) : ko.issue.notNumber(raw);
 }

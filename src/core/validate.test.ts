@@ -140,4 +140,22 @@ describe('validate', () => {
     expect(over.issues).toEqual([expect.objectContaining({ code: 'ROW_LIMIT', level: 'error' })]);
     expect(over.validRows).toHaveLength(3);
   });
+
+  it.each([
+    ['40원', '원'],
+    ['1,000 명', '명'],
+    ['35%', '%'],
+    ['12.5kWh', 'kWh'],
+  ])('숫자 뒤에 단위를 붙인 값(%s)은 단위를 빼라고 안내한다', (value, suffix) => {
+    const { issues } = validate([row('A', 'B', value)]);
+    expect(issues[0]).toMatchObject({ code: 'NOT_NUMBER' });
+    expect(issues[0]!.message).toContain(`"${suffix}"`);
+    expect(issues[0]!.message).toContain('값의 단위');
+  });
+
+  it('조사를 받침에 맞게 붙인다', () => {
+    const { issues } = validate([row('', 'B', '1'), row('홍보', '홍보', '1')]);
+    expect(issues[0]!.message).toBe('출발 노드를 입력하세요.');
+    expect(issues[1]!.message).toContain('"홍보"가 자기 자신으로');
+  });
 });

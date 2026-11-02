@@ -35,7 +35,7 @@ test('A3: 숫자 오류를 셀 단위로 보이고, 요약에서 셀로 이동�
   await value.fill('스물');
   await expect(value).toHaveAttribute('aria-invalid', 'true');
   await expect(issueSummary(page)).toContainText('오류 1건');
-  await expect(issueSummary(page)).toContainText('"스물"은(는) 숫자가 아닙니다');
+  await expect(issueSummary(page)).toContainText('"스물"은 숫자가 아닙니다');
   // 오류 행만 빠지고 나머지는 그린다.
   await expect(links(page)).toHaveCount(9);
 
@@ -51,7 +51,7 @@ test('A3: 숫자 오류를 셀 단위로 보이고, 요약에서 셀로 이동�
 test('A3: 필수 셀 누락', async ({ page }) => {
   await cell(page, 2, '출발 노드').fill('');
   await expect(cell(page, 2, '출발 노드')).toHaveAttribute('aria-invalid', 'true');
-  await expect(issueSummary(page)).toContainText('출발 노드을(를) 입력하세요');
+  await expect(issueSummary(page)).toContainText('출발 노드를 입력하세요');
 });
 
 test('순환 연결이면 그리지 않고 경로를 안내한다', async ({ page }) => {
@@ -82,4 +82,12 @@ test('행 삭제 버튼과 실행 취소', async ({ page }) => {
   await page.keyboard.press('ControlOrMeta+z');
   await expect(links(page)).toHaveCount(10);
   await expect(cell(page, 10, '도착 노드')).toHaveValue('인쇄물');
+});
+
+test('열 이름 줄까지 복사해 붙여넣으면 그 줄은 뺀다', async ({ page }) => {
+  await pasteText(page, 1, '출발 노드', '출발 노드\t도착 노드\t값\nA\tB\t5\nB\tC\t5\n');
+  await expect(page.getByRole('status').filter({ hasText: '붙여넣었습니다' })).toHaveText(
+    '2행을 붙여넣었습니다. 첫 줄(열 이름)은 뺐습니다.',
+  );
+  await expect(cell(page, 1, '출발 노드')).toHaveValue('A');
 });

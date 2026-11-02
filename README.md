@@ -6,6 +6,7 @@
 - 개발 계획: [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)
 - 결정 기록: [docs/DECISIONS.md](docs/DECISIONS.md)
 - 배포 안내: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- 사용성 테스트 대본: [docs/USABILITY_TEST.md](docs/USABILITY_TEST.md) — 주소 끝에 `?observe=1`을 붙이면 진행자용 관찰 모드(내용 없이 과제 시간·오류·내려받기만 기록)
 
 ## 개발
 

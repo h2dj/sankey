@@ -77,3 +77,28 @@
   gap: 6px;
   font-size: 0.875rem;
 }
+
+/* 좁은 화면: 실행 취소·다시 실행은 아이콘만, 단추를 작게 해 상단 바 높이를 줄인다. */
+@media (max-width: 959px) {
+  .bar {
+    padding: 8px 12px;
+  }
+
+  .title {
+    font-size: 1.0625rem;
+  }
+
+  .label {
+    display: none;
+  }
+
+  .actions {
+    gap: 6px;
+  }
+
+  .actions button,
+  .actions select {
+    padding: 4px 8px;
+    font-size: 0.8125rem;
+  }
+}

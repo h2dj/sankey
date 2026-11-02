@@ -14,8 +14,10 @@ import {
 import { loadSample } from '../../core/samples';
 import { validate } from '../../core/validate';
 import { downloadBlob } from '../../export/download';
+import { josa } from '../../i18n/josa';
 import { ko } from '../../i18n/ko';
 import { announce } from '../../state/announce';
+import { track } from '../../state/observe';
 import { editorStore } from '../../state/store';
 import { Dialog } from '../Dialog/Dialog';
 import { Radio } from '../SettingsPanel/controls';
@@ -59,11 +61,19 @@ export function ImportDialog({ initialFile, onClose }: Props) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const readFile = (file: File) => void readCsvFile(file).then(setState);
+  const show = (next: State) => {
+    if (next.step === 'error') track('import_fail');
+    setState(next);
+  };
+  const readFile = (file: File) => void readCsvFile(file).then(show);
 
   // 끌어다 놓은 파일이 있으면 바로 읽는다(처음 열 때 한 번).
   useEffect(() => {
-    if (initialFile) void readCsvFile(initialFile).then(setState);
+    if (initialFile)
+      void readCsvFile(initialFile).then((next) => {
+        if (next.step === 'error') track('import_fail');
+        setState(next);
+      });
   }, [initialFile]);
 
   const close = onClose;
@@ -92,6 +102,13 @@ export function ImportDialog({ initialFile, onClose }: Props) {
     if (state.step !== 'map' || !mapped || mapped.problem) return;
     const { dropped } = editorStore.getState().importRows(mapped.rows, mode, state.csv.unit);
     const imported = mapped.rows.length - dropped;
+    track('import_ok', {
+      rows: imported,
+      encoding: state.csv.encoding,
+      mode,
+      header: state.hasHeader,
+      remapped: JSON.stringify(state.mapping) !== JSON.stringify(state.csv.mapping),
+    });
     announce(
       `${state.fileName}에서 ${imported}행을 ${mode === 'replace' ? '가져왔습니다' : '추가했습니다'}.` +
         (dropped > 0 ? ` 최대 ${LIMITS.maxRows}행을 넘는 ${dropped}행은 제외했습니다.` : '') +
@@ -174,7 +191,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
       {state.step === 'error' && (
         <>
           <div className={styles.error} role="alert">
-            <strong>{state.fileName}을(를) 읽지 못했습니다.</strong>
+            <strong>{josa(state.fileName, '을/를')} 읽지 못했습니다.</strong>
             <p>{state.error}</p>
             <p>지금 표의 데이터는 그대로 있습니다.</p>
           </div>

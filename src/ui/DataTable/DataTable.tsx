@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { LIMITS } from '../../core/config';
+import { looksLikeHeaderRow } from '../../core/csv';
 import { COLUMNS, parseClipboardTable } from '../../core/rows';
 import type { Issue, Row, RowField } from '../../core/types';
 import { ko } from '../../i18n/ko';
@@ -92,15 +93,20 @@ export function DataTable({ issuesByRow, unit }: Props) {
     };
 
     const onPaste = (e: ClipboardEvent<HTMLInputElement>, rowId: string, field: RowField) => {
-      const matrix = parseClipboardTable(e.clipboardData.getData('text/plain'));
+      let matrix = parseClipboardTable(e.clipboardData.getData('text/plain'));
       if (!matrix) return; // 셀 하나: 기본 붙여넣기
       e.preventDefault();
+      // 엑셀에서 열 이름 줄까지 복사한 경우 그 줄은 뺀다.
+      const skippedHeader = matrix.length > 1 && looksLikeHeaderRow(matrix[0]!);
+      if (skippedHeader) matrix = matrix.slice(1);
       const { droppedRows } = editorStore.getState().paste(rowId, field, matrix);
       const pasted = matrix.length - droppedRows;
       setStatus(
-        droppedRows > 0
-          ? `${pasted}행을 붙여넣었습니다. 최대 ${LIMITS.maxRows}행을 넘는 ${droppedRows}행은 제외했습니다.`
-          : `${pasted}행을 붙여넣었습니다.`,
+        `${pasted}행을 붙여넣었습니다.` +
+          (skippedHeader ? ' 첫 줄(열 이름)은 뺐습니다.' : '') +
+          (droppedRows > 0
+            ? ` 최대 ${LIMITS.maxRows}행을 넘는 ${droppedRows}행은 제외했습니다.`
+            : ''),
       );
     };
 
