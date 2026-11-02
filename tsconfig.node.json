@@ -11,5 +11,11 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "vitest.perf.config.ts", "playwright.config.ts", "eslint.config.js", "tests"]
+  "include": [
+    "vite.config.ts",
+    "vitest.perf.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js",
+    "tests"
+  ]
 }

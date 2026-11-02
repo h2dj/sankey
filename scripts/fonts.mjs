@@ -40,7 +40,10 @@ for (const name of Object.values(WEIGHTS)) {
     }
   }
 }
-copyFileSync(join(root, 'node_modules/pretendard/dist/LICENSE.txt'), join(outDir, 'LICENSE-Pretendard.txt'));
+copyFileSync(
+  join(root, 'node_modules/pretendard/dist/LICENSE.txt'),
+  join(outDir, 'LICENSE-Pretendard.txt'),
+);
 
 if (process.argv.includes('--manifest')) {
   const lines = [
@@ -51,11 +54,15 @@ if (process.argv.includes('--manifest')) {
     `export const FONT_WEIGHTS = ${JSON.stringify(WEIGHTS)} as const;`,
     '',
     'export const FONT_SUBSETS: readonly { index: number; unicodeRange: string }[] = [',
-    ...subsets.map((s) => `  { index: ${s.index}, unicodeRange: ${JSON.stringify(s.unicodeRange)} },`),
+    ...subsets.map(
+      (s) => `  { index: ${s.index}, unicodeRange: ${JSON.stringify(s.unicodeRange)} },`,
+    ),
     '];',
     '',
   ];
   writeFileSync(join(root, 'src/fonts/manifest.ts'), lines.join('\n'));
 }
 
-console.log(`fonts: ${subsets.length} subsets × ${Object.keys(WEIGHTS).length} weights, copied ${copied}`);
+console.log(
+  `fonts: ${subsets.length} subsets × ${Object.keys(WEIGHTS).length} weights, copied ${copied}`,
+);
