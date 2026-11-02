@@ -84,4 +84,18 @@ describe('editor store', () => {
     s().undo();
     expect(s().doc.rows.map((r) => r.id)).toEqual([row.id, id]);
   });
+
+  it('설정 슬라이더 연속 변경은 한 번의 실행 취소로 묶는다', () => {
+    const { s, clock } = setup();
+    const before = s().doc.settings.nodePadding;
+    for (const v of [10, 20, 30, 40]) {
+      s().setSettings({ nodePadding: v });
+      clock.advance(100);
+    }
+    s().setSettings({ fontSize: 20 });
+    expect(s().past).toHaveLength(2);
+    s().undo();
+    s().undo();
+    expect(s().doc.settings.nodePadding).toBe(before);
+  });
 });

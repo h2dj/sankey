@@ -1,14 +1,20 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { buildGraph } from './core/buildGraph';
+import { DEFAULT_CHART_WIDTH, buildChartModel } from './core/chartModel';
 import { LIMITS } from './core/config';
 import { useDebounced } from './hooks/useDebounced';
 import { ko } from './i18n/ko';
+import { selectionStore } from './state/selection';
 import { editorStore, useEditor } from './state/store';
 import { DataTable } from './ui/DataTable/DataTable';
 import { IssueSummary } from './ui/IssueSummary/IssueSummary';
 import { groupIssuesByRow } from './ui/issues';
 import { Preview } from './ui/Preview/Preview';
+import { SettingsPanel } from './ui/SettingsPanel/SettingsPanel';
 import { TopBar } from './ui/TopBar/TopBar';
+
+/** 이보다 좁은 화면에서는 이 폭으로 그려 축소해 보인다(레이블 겹침 방지). */
+const MIN_CHART_WIDTH = 560;
 
 export function App() {
   const doc = useEditor((s) => s.doc);
@@ -19,6 +25,16 @@ export function App() {
     () => buildGraph(settled.rows, settled.settings),
     [settled.rows, settled.settings],
   );
+  // 미리보기 폭에 맞춰 그린다. 너무 좁으면 최소 폭으로 그리고 화면에 맞춰 줄인다.
+  const [previewWidth, setPreviewWidth] = useState(DEFAULT_CHART_WIDTH);
+  const chartWidth = Math.max(MIN_CHART_WIDTH, previewWidth - 2);
+  const model = useMemo(
+    () =>
+      graph.drawable
+        ? buildChartModel(graph, settled.rows, settled.meta, settled.settings, chartWidth)
+        : null,
+    [graph, settled.rows, settled.meta, settled.settings, chartWidth],
+  );
   const issuesByRow = useMemo(() => groupIssuesByRow(graph.issues), [graph.issues]);
 
   useUndoShortcuts();
@@ -27,14 +43,25 @@ export function App() {
     <div className="app">
       <TopBar />
       <main className="workspace">
-        <section className="panel" aria-labelledby="panel-data">
+        <section className="panel panel--data" aria-labelledby="panel-data">
           <h2 id="panel-data">{ko.panel.data}</h2>
           <DataTable issuesByRow={issuesByRow} unit={doc.meta.unit} />
           <IssueSummary issues={graph.issues} rows={settled.rows} />
         </section>
-        <section className="panel" aria-labelledby="panel-preview">
+        <section className="panel panel--preview" aria-labelledby="panel-preview">
           <h2 id="panel-preview">{ko.panel.preview}</h2>
-          <Preview graph={graph} meta={settled.meta} settings={settled.settings} />
+          <Preview
+            graph={graph}
+            model={model}
+            meta={settled.meta}
+            settings={settled.settings}
+            rows={settled.rows}
+            onWidthChange={setPreviewWidth}
+          />
+        </section>
+        <section className="panel panel--settings" aria-labelledby="panel-settings">
+          <h2 id="panel-settings">{ko.panel.settings}</h2>
+          <SettingsPanel model={model} />
         </section>
       </main>
     </div>
@@ -45,6 +72,7 @@ export function App() {
 function useUndoShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') selectionStore.getState().clear();
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
       const key = e.key.toLowerCase();
       const { undo, redo } = editorStore.getState();

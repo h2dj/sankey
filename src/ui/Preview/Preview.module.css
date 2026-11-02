@@ -1,13 +1,105 @@
-.figure {
-  margin: 0;
+.frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frame:fullscreen {
+  padding: 16px;
+  background: var(--color-surface);
   overflow: auto;
 }
 
-.figure svg {
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.controls button {
+  min-width: 36px;
+}
+
+.zoomLevel {
+  font-variant-numeric: tabular-nums;
+}
+
+.viewport {
+  overflow: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  /* 확대했을 때 스크롤 영역 */
+  max-height: 75vh;
+}
+
+.frame:fullscreen .viewport {
+  max-height: none;
+  flex: 1;
+}
+
+.canvas {
+  min-width: 0;
+}
+
+.canvas svg {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
   font-family: inherit;
+}
+
+.canvas svg [role='button'] {
+  cursor: pointer;
+}
+
+.canvas svg [role='button']:focus {
+  outline: none;
+}
+
+.canvas svg rect[role='button']:focus-visible {
+  stroke: var(--color-text);
+  stroke-width: 2px;
+}
+
+.canvas svg path[role='button']:focus-visible {
+  stroke-opacity: 0.85;
+  filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.6));
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  padding: 8px 10px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  pointer-events: none;
+  transform: translate(12px, 12px);
+}
+
+.tipValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tipMuted {
+  color: var(--color-text-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .caption {
@@ -15,7 +107,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 4px 16px;
-  margin-top: 8px;
+  margin: 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
@@ -41,4 +133,8 @@
 
 .empty p {
   margin: 8px 0 0;
+}
+
+.tooltipFlip {
+  transform: translate(calc(-100% - 12px), 12px);
 }

@@ -38,6 +38,10 @@ export interface Settings {
   minLinkWidth: number;
   fontSize: number;
   showValues: boolean;
+  /**
+   * inside: 레이블을 차트 가운데 쪽에 둔다(양끝 열의 레이블이 차트 안쪽으로).
+   * outside: 첫 열은 왼쪽 바깥, 마지막 열은 오른쪽 바깥에 두고 그만큼 여백을 잡는다.
+   */
   labelPosition: 'outside' | 'inside';
   paletteId: string;
   /** 노드별 색 / 색상 그룹별 색 */

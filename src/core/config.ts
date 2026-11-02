@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   minLinkWidth: 1,
   fontSize: 13,
   showValues: true,
-  labelPosition: 'outside',
+  labelPosition: 'inside',
   paletteId: 'default',
   colorMode: 'node',
   linkColor: 'source',

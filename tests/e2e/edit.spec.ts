@@ -11,8 +11,9 @@ test('A2: 값을 고치면 미리보기와 노드 값이 갱신된다', async ({
   await expect(chart(page).locator('[data-label-for="전체 예산"]')).toHaveText(
     '전체 예산 110 백만 원',
   );
-  await expect(chart(page).locator('[data-link-id] title').first()).toHaveText(
-    '전체 예산 → 교육: 50 백만 원',
+  await expect(chart(page).locator('[data-link-id]').first()).toHaveAttribute(
+    'aria-label',
+    /^전체 예산 → 교육, 50 백만 원/,
   );
   // 교육으로 50이 들어오고 40이 나가므로 불균형 경고
   await expect(issueSummary(page)).toContainText('경고 1건');

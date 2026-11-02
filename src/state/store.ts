@@ -93,7 +93,9 @@ export function createEditorStore(
 
       setSettings(patch) {
         const { doc } = get();
-        commit({ ...doc, settings: { ...doc.settings, ...patch } });
+        // 슬라이더·색 선택기를 끄는 동안의 연속 변경은 한 번의 실행 취소로 묶는다.
+        const keys = Object.keys(patch).sort().join(',');
+        commit({ ...doc, settings: { ...doc.settings, ...patch } }, `settings:${keys}`);
       },
 
       replaceDoc(next) {

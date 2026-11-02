@@ -28,6 +28,9 @@ export interface LaidNode extends GraphNode {
 export interface LaidLink extends GraphLink {
   /** 그릴 두께(minLinkWidth 반영) */
   width: number;
+  /** 흐름이 시작·끝나는 x 좌표(그라데이션 방향용) */
+  sx: number;
+  tx: number;
   /** SVG path d. 굵은 선(stroke)으로 그린다. */
   path: string;
 }
@@ -42,8 +45,11 @@ export interface LayoutResult {
 export interface LayoutSize {
   width: number;
   height: number;
-  /** 레이블이 잘리지 않도록 남길 바깥 여백 */
+  /** 위아래·기본 여백 */
   margin?: number;
+  /** 왼쪽·오른쪽 여백(바깥쪽 레이블 자리). 없으면 margin */
+  marginLeft?: number;
+  marginRight?: number;
 }
 
 const ALIGN = {
@@ -74,8 +80,8 @@ export function computeLayout(
     .nodeWidth(settings.nodeWidth)
     .nodePadding(settings.nodePadding)
     .extent([
-      [margin, margin],
-      [width - margin, height - margin],
+      [size.marginLeft ?? margin, margin],
+      [width - (size.marginRight ?? margin), height - margin],
     ]);
 
   const result = generator({
@@ -118,6 +124,8 @@ export function computeLayout(
       value: l.value,
       rowIds: l.rowIds,
       width: Math.max(l.width!, settings.minLinkWidth),
+      sx,
+      tx,
       path: linkPath(sx, l.y0!, tx, l.y1!),
     };
   });

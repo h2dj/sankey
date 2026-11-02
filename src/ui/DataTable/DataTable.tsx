@@ -11,6 +11,7 @@ import { LIMITS } from '../../core/config';
 import { COLUMNS, parseClipboardTable } from '../../core/rows';
 import type { Issue, Row, RowField } from '../../core/types';
 import { ko } from '../../i18n/ko';
+import { selectionStore, useSelection } from '../../state/selection';
 import { editorStore, useEditor } from '../../state/store';
 import { focusCell } from '../focus';
 import { LEVEL_LABEL, type RowIssues } from '../issues';
@@ -27,6 +28,8 @@ const isMod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 
 export function DataTable({ issuesByRow, unit }: Props) {
   const rows = useEditor((s) => s.doc.rows);
+  const selection = useSelection((s) => s.selection);
+  const selectedRows = new Set(selection?.rowIds);
   const pendingFocus = useRef<FocusTarget | null>(null);
   const [status, setStatus] = useState('');
 
@@ -106,7 +109,16 @@ export function DataTable({ issuesByRow, unit }: Props) {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.scroller}>
+      <div
+        className={styles.scroller}
+        onBlur={(e) => {
+          // 표 밖으로 초점이 나가면 표에서 만든 선택(행 강조)을 푼다.
+          const sel = selectionStore.getState().selection;
+          if (sel?.from === 'table' && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            selectionStore.getState().clear();
+          }
+        }}
+      >
         <table className={styles.table} aria-label="흐름 데이터" aria-describedby="table-help">
           <thead>
             <tr>
@@ -136,6 +148,7 @@ export function DataTable({ issuesByRow, unit }: Props) {
                 row={row}
                 index={i}
                 issues={issuesByRow.get(row.id)}
+                selected={selectedRows.has(row.id)}
                 onKeyDown={handlers.onKeyDown}
                 onPaste={handlers.onPaste}
                 onDelete={handlers.deleteRow}
@@ -167,6 +180,8 @@ interface RowViewProps {
   row: Row;
   index: number;
   issues: RowIssues | undefined;
+  /** 차트에서 고른 흐름·노드에 속한 행 */
+  selected: boolean;
   onKeyDown: (e: KeyboardEvent<HTMLInputElement>, rowId: string, field: RowField) => void;
   onPaste: (e: ClipboardEvent<HTMLInputElement>, rowId: string, field: RowField) => void;
   onDelete: (rowId: string) => void;
@@ -177,11 +192,17 @@ function issueText(list: readonly Issue[] | undefined) {
 }
 
 const RowView = memo(
-  function RowView({ row, index, issues, onKeyDown, onPaste, onDelete }: RowViewProps) {
+  function RowView({ row, index, issues, selected, onKeyDown, onPaste, onDelete }: RowViewProps) {
     const n = index + 1;
     const rowNote = issueText(issues?.row);
     return (
-      <tr className={issues?.worst ? styles[`row_${issues.worst}`] : undefined} data-row={n}>
+      <tr
+        className={[issues?.worst && styles[`row_${issues.worst}`], selected && styles.selected]
+          .filter(Boolean)
+          .join(' ')}
+        data-row={n}
+        data-selected={selected || undefined}
+      >
         <th scope="row" className={styles.num}>
           {n}
           {rowNote && (
@@ -202,6 +223,7 @@ const RowView = memo(
                 value={row[field] ?? ''}
                 onChange={(e) => editorStore.getState().setCell(row.id, field, e.target.value)}
                 onKeyDown={(e) => onKeyDown(e, row.id, field)}
+                onFocus={() => selectRow(row.id)}
                 onPaste={(e) => onPaste(e, row.id, field)}
                 aria-label={`${n}행 ${ko.columns[field]}`}
                 aria-invalid={worst?.level === 'error' ? true : undefined}
@@ -235,8 +257,19 @@ const RowView = memo(
       </tr>
     );
   },
-  (a, b) => a.row === b.row && a.index === b.index && sameIssues(a.issues, b.issues),
+  (a, b) =>
+    a.row === b.row &&
+    a.index === b.index &&
+    a.selected === b.selected &&
+    sameIssues(a.issues, b.issues),
 );
+
+/** 셀에 초점이 오면 그 행을 선택한다. 이미 차트에서 고른 행 묶음에 속하면 그대로 둔다. */
+function selectRow(rowId: string) {
+  const sel = selectionStore.getState().selection;
+  if (sel?.rowIds.includes(rowId)) return;
+  selectionStore.getState().select({ rowIds: [rowId], from: 'table' });
+}
 
 function sameIssues(a: RowIssues | undefined, b: RowIssues | undefined): boolean {
   if (a === b) return true;

@@ -1,120 +1,163 @@
-import { useId, useMemo } from 'react';
-import { formatWithUnit } from '../../core/format';
-import { computeLayout, suggestHeight } from '../../core/layout';
-import { assignColors } from '../../core/palette';
-import type { BuildResult, DiagramMeta, Settings } from '../../core/types';
+import { useId, type FocusEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import type { ChartModel } from '../../core/chartModel';
+import { TEXT_DARK } from '../../core/palette';
+import type { Settings } from '../../core/types';
+import { linkAriaLabel, linkKey, nodeAriaLabel, nodeKey, type ItemKey } from './items';
 
-interface Props {
-  graph: BuildResult;
-  meta: DiagramMeta;
-  settings: Settings;
-  /** 논리 너비(px). 화면에서는 viewBox로 맞춰 늘고 줄어든다. */
-  width?: number;
+/** 화면 미리보기에서만 쓰는 상호작용. 내보내기에서는 넘기지 않는다. */
+export interface ChartInteraction {
+  /** 키보드 초점을 받을 요소(roving tabindex) */
+  activeKey: ItemKey | null;
+  /** null이면 강조 없음, 아니면 이 요소들만 진하게 */
+  highlight: { links: Set<string>; nodes: Set<string> } | null;
+  onPointerEnter(key: ItemKey, e: MouseEvent<SVGElement>): void;
+  onPointerLeave(): void;
+  onFocusItem(key: ItemKey, e: FocusEvent<SVGElement>): void;
+  onBlurItem(): void;
+  onActivate(key: ItemKey): void;
+  onKeyDown(key: ItemKey, e: KeyboardEvent<SVGElement>): void;
 }
 
-const LABEL_GAP = 6;
+interface Props {
+  model: ChartModel;
+  title: string;
+  settings: Pick<Settings, 'fontSize' | 'showValues' | 'linkColor'>;
+  interaction?: ChartInteraction;
+}
 
-/** 레이아웃 결과를 SVG로 그린다. 내보내기(S3)도 이 SVG를 쓴다. */
-export function SankeyChart({ graph, meta, settings, width = 960 }: Props) {
-  const titleId = useId();
-  const descId = useId();
-  const height = suggestHeight(graph.nodes.length, settings);
+const LINK_OPACITY = 0.45;
+const LINK_OPACITY_DIM = 0.1;
+const LINK_OPACITY_HI = 0.7;
 
-  const layout = useMemo(
-    () => computeLayout(graph, settings, { width, height }),
-    [graph, settings, width, height],
-  );
+/** 차트 모델을 SVG로 그린다. interaction이 없으면 정적인 SVG(내보내기용)가 된다. */
+export function SankeyChart({ model, title, settings, interaction }: Props) {
+  const uid = useId().replace(/:/g, '');
+  const titleId = `${uid}-title`;
+  const descId = `${uid}-desc`;
+  const hi = interaction?.highlight ?? null;
 
-  const colors = useMemo(() => {
-    const keyOf = (n: { id: string; group?: string }) =>
-      settings.colorMode === 'group' ? (n.group ?? n.id) : n.id;
-    const byKey = assignColors(layout.nodes.map(keyOf));
-    return new Map(
-      layout.nodes.map((n) => [n.id, settings.nodeColorOverrides[n.id] ?? byKey.get(keyOf(n))!]),
-    );
-  }, [layout, settings.colorMode, settings.nodeColorOverrides]);
-
-  const labelOf = new Map(layout.nodes.map((n) => [n.id, n.label]));
-  const fmt = (v: number) => formatWithUnit(v, meta.unit, settings.numberFormat);
+  const itemProps = (key: ItemKey, label: string) =>
+    interaction
+      ? {
+          tabIndex: interaction.activeKey === key ? 0 : -1,
+          role: 'button',
+          'aria-label': label,
+          onMouseEnter: (e: MouseEvent<SVGElement>) => interaction.onPointerEnter(key, e),
+          onMouseLeave: interaction.onPointerLeave,
+          onFocus: (e: FocusEvent<SVGElement>) => interaction.onFocusItem(key, e),
+          onBlur: interaction.onBlurItem,
+          onClick: () => interaction.onActivate(key),
+          onKeyDown: (e: KeyboardEvent<SVGElement>) => interaction.onKeyDown(key, e),
+        }
+      : {};
 
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
-      width="100%"
-      role="img"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${model.width} ${model.height}`}
+      width={model.width}
+      height={model.height}
+      role={interaction ? 'group' : 'img'}
+      aria-roledescription={interaction ? '생키 다이어그램' : undefined}
       aria-labelledby={`${titleId} ${descId}`}
       className="sankey-chart"
       fontSize={settings.fontSize}
       data-testid="sankey-chart"
     >
-      <title id={titleId}>{meta.title || '생키 다이어그램'}</title>
+      <title id={titleId}>{title || '생키 다이어그램'}</title>
       <desc id={descId}>
-        {`노드 ${layout.nodes.length}개, 흐름 ${layout.links.length}개. ` +
-          layout.links
-            .map((l) => `${labelOf.get(l.source)} → ${labelOf.get(l.target)} ${fmt(l.value)}`)
-            .join(', ')}
+        {`노드 ${model.nodes.length}개, 흐름 ${model.links.length}개. ` +
+          model.links.map((l) => `${l.sourceLabel} → ${l.targetLabel} ${l.valueText}`).join(', ')}
       </desc>
-      <g className="links" fill="none" strokeOpacity={0.4}>
-        {layout.links.map((l) => (
-          <path
-            key={l.id}
-            d={l.path}
-            stroke={
-              settings.linkColor === 'target'
-                ? colors.get(l.target)
-                : settings.linkColor === 'neutral'
-                  ? '#8c959f'
-                  : colors.get(l.source)
-            }
-            strokeWidth={l.width}
-            data-link-id={l.id}
-            data-source={l.source}
-            data-target={l.target}
-          >
-            <title>{`${labelOf.get(l.source)} → ${labelOf.get(l.target)}: ${fmt(l.value)}`}</title>
-          </path>
-        ))}
+
+      {settings.linkColor === 'gradient' && (
+        <defs>
+          {model.links.map((l, i) => (
+            <linearGradient
+              key={l.id}
+              id={`${uid}-g${i}`}
+              gradientUnits="userSpaceOnUse"
+              x1={l.sx}
+              x2={l.tx}
+              y1={0}
+              y2={0}
+            >
+              <stop offset="0%" stopColor={l.sourceColor} />
+              <stop offset="100%" stopColor={l.targetColor} />
+            </linearGradient>
+          ))}
+        </defs>
+      )}
+
+      <g className="links" fill="none">
+        {model.links.map((l, i) => {
+          const opacity = !hi
+            ? LINK_OPACITY
+            : hi.links.has(l.id)
+              ? LINK_OPACITY_HI
+              : LINK_OPACITY_DIM;
+          return (
+            <path
+              key={l.id}
+              d={l.path}
+              stroke={settings.linkColor === 'gradient' ? `url(#${uid}-g${i})` : l.color}
+              strokeOpacity={opacity}
+              strokeWidth={l.width}
+              data-link-id={l.id}
+              data-source={l.source}
+              data-target={l.target}
+              {...itemProps(linkKey(l.id), linkAriaLabel(l))}
+            >
+              {!interaction && (
+                <title>{`${l.sourceLabel} → ${l.targetLabel}: ${l.valueText}`}</title>
+              )}
+            </path>
+          );
+        })}
       </g>
+
       <g className="nodes">
-        {layout.nodes.map((n) => (
+        {model.nodes.map((n) => (
           <rect
             key={n.id}
             x={n.x0}
             y={n.y0}
             width={n.x1 - n.x0}
             height={Math.max(1, n.y1 - n.y0)}
-            fill={colors.get(n.id)}
+            fill={n.color}
+            fillOpacity={hi && !hi.nodes.has(n.id) ? 0.35 : 1}
             data-node-id={n.id}
+            {...itemProps(nodeKey(n.id), nodeAriaLabel(n))}
           >
-            <title>{`${n.label}: ${fmt(n.value)}`}</title>
+            {!interaction && <title>{`${n.label}: ${n.valueText}`}</title>}
           </rect>
         ))}
       </g>
+
       <g
         className="labels"
-        fill="#1b1f24"
+        fill={TEXT_DARK}
         stroke="#ffffff"
         strokeWidth={3}
         strokeLinejoin="round"
         paintOrder="stroke"
+        aria-hidden={interaction ? true : undefined}
+        pointerEvents="none"
       >
-        {layout.nodes.map((n) => {
-          // 왼쪽 절반의 노드는 오른쪽에, 오른쪽 절반은 왼쪽에 레이블을 둔다.
-          const leftHalf = (n.x0 + n.x1) / 2 < width / 2;
-          return (
-            <text
-              key={n.id}
-              x={leftHalf ? n.x1 + LABEL_GAP : n.x0 - LABEL_GAP}
-              y={(n.y0 + n.y1) / 2}
-              dy="0.35em"
-              textAnchor={leftHalf ? 'start' : 'end'}
-              data-label-for={n.id}
-            >
-              {n.label}
-              {settings.showValues && <tspan fillOpacity={0.7}>{` ${fmt(n.value)}`}</tspan>}
-            </text>
-          );
-        })}
+        {model.nodes.map((n) => (
+          <text
+            key={n.id}
+            x={n.labelX}
+            y={n.labelY}
+            dy="0.35em"
+            textAnchor={n.labelAnchor}
+            fillOpacity={hi && !hi.nodes.has(n.id) ? 0.45 : 1}
+            data-label-for={n.id}
+          >
+            {n.label}
+            {settings.showValues && <tspan fillOpacity={0.7}>{` ${n.valueText}`}</tspan>}
+          </text>
+        ))}
       </g>
     </svg>
   );

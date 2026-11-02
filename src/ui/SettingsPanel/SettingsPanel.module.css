@@ -1,0 +1,163 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.section summary {
+  padding: 8px 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+
+.field input[type='text'],
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input[type='range'] {
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.output {
+  float: right;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.radio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.radio legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.radio label,
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.radio input,
+.checkbox input {
+  accent-color: var(--color-accent);
+}
+
+.palette {
+  flex-wrap: wrap;
+}
+
+.swatches {
+  display: inline-flex;
+  margin-left: auto;
+  gap: 1px;
+}
+
+.swatches span {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.nodeColors {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.nodeColors legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.nodeColors ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 16em;
+  margin: 0 0 8px;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.nodeColors li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nodeColors input[type='color'] {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.nodeName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkButton {
+  padding: 0 4px;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}

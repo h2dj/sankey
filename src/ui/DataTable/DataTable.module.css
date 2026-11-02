@@ -50,7 +50,7 @@
 }
 
 .col_value {
-  width: 7em;
+  width: 5.5em;
 }
 
 .col_group,
@@ -159,4 +159,9 @@
   margin: 0;
   font-size: 0.75rem;
   color: var(--color-text-muted);
+}
+
+.selected > th,
+.selected > td {
+  background: var(--color-accent-soft);
 }

@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { buildGraph } from './buildGraph';
 import { DEFAULT_SETTINGS } from './config';
 import { computeLayout, linkPath, suggestHeight } from './layout';
-import { DEFAULT_PALETTE, assignColors, contrastRatio } from './palette';
+import {
+  DEFAULT_PALETTE,
+  PALETTES,
+  TEXT_DARK,
+  TEXT_LIGHT,
+  assignColors,
+  contrastRatio,
+  readableTextColor,
+} from './palette';
+import { estimateTextWidth } from './text';
 import { SAMPLES, loadSample } from './samples';
 
 const size = { width: 800, height: 500 };
@@ -95,7 +104,28 @@ describe('helpers', () => {
     expect([...c.values()]).toEqual(DEFAULT_PALETTE.slice(0, 3));
   });
 
-  it.each(DEFAULT_PALETTE)('팔레트 %s는 흰 배경 대비 3:1 이상', (color) => {
-    expect(contrastRatio(color, '#ffffff')).toBeGreaterThanOrEqual(3);
+  it.each(PALETTES.flatMap((p) => p.colors.map((c) => [p.id, c])))(
+    '팔레트 %s %s는 흰 배경 대비 3:1 이상',
+    (_, color) => {
+      expect(contrastRatio(color!, '#ffffff')).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it('레이블(흰 테두리 위 어두운 글자)은 흰 배경에서 4.5:1 이상', () => {
+    expect(contrastRatio(TEXT_DARK, '#ffffff')).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('readableTextColor는 두 후보 중 대비가 큰 글자색을 고른다', () => {
+    for (const bg of ['#ffffff', '#000000', '#808080', '#FFD700', '#0072B2']) {
+      const fg = readableTextColor(bg);
+      const other = fg === TEXT_DARK ? TEXT_LIGHT : TEXT_DARK;
+      expect(contrastRatio(fg, bg), bg).toBeGreaterThanOrEqual(contrastRatio(other, bg));
+    }
+  });
+
+  it('estimateTextWidth: 한글은 글자 크기, 라틴은 0.6배', () => {
+    expect(estimateTextWidth('가나', 10)).toBe(20);
+    expect(estimateTextWidth('ab', 10)).toBe(12);
+    expect(estimateTextWidth('', 10)).toBe(0);
   });
 });
