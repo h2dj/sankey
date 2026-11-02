@@ -1,0 +1,104 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px var(--space);
+  padding: 10px var(--space);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.titleBlock {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 4px;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.saveWarn {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.saveHelp {
+  position: relative;
+  margin-left: 8px;
+}
+
+.saveHelp summary {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.saveHelp ul {
+  position: absolute;
+  z-index: 20;
+  top: 1.6em;
+  left: 0;
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+
+.saveHelp li + li {
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sample {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+/* 좁은 화면: 실행 취소·다시 실행은 아이콘만, 단추를 작게 해 상단 바 높이를 줄인다. */
+@media (max-width: 959px) {
+  .bar {
+    padding: 8px 12px;
+  }
+
+  .title {
+    font-size: 1.0625rem;
+  }
+
+  .label {
+    display: none;
+  }
+
+  .actions {
+    gap: 6px;
+  }
+
+  .actions button,
+  .actions select {
+    padding: 4px 8px;
+    font-size: 0.8125rem;
+  }
+}

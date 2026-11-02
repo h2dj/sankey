@@ -1,0 +1,77 @@
+name: Deploy
+
+# main의 CI가 통과하면 GitHub Pages에 배포하고, 배포된 주소에서 스모크 테스트를 한다.
+# 처음 한 번: 저장소 Settings → Pages → Source를 "GitHub Actions"로 바꿔야 한다(docs/DEPLOYMENT.md).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 빌드
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 빌드
+        run: npm run build
+        env:
+          # 저장소 변수 SANKEY_INDEX=1이면 검색엔진 노출을 허용한다(기본: noindex).
+          SANKEY_INDEX: ${{ vars.SANKEY_INDEX }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: 배포
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  smoke:
+    name: 배포 주소 스모크 테스트
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: 스모크 테스트
+        run: npx playwright test tests/e2e/smoke.spec.ts
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.page_url }}

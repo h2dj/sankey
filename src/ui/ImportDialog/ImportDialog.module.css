@@ -1,0 +1,123 @@
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+.dragging {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.drop p {
+  margin: 0;
+}
+
+.help {
+  max-width: 52ch;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.link {
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  align-self: flex-start;
+}
+
+.drop .link {
+  align-self: auto;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--color-text);
+  background: var(--color-error-soft);
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+}
+
+.error p {
+  margin: 4px 0 0;
+}
+
+.summary {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.mapping {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+}
+
+.mapping legend {
+  padding: 0 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.mapping label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+}
+
+.mapping select {
+  width: 100%;
+}
+
+.required {
+  color: var(--color-error);
+}
+
+.previewWrap {
+  overflow: auto;
+}
+
+.preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.preview caption {
+  text-align: left;
+  padding-bottom: 4px;
+  color: var(--color-text-muted);
+}
+
+.preview th,
+.preview td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.preview .num {
+  text-align: right;
+}

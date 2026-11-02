@@ -1,0 +1,36 @@
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  color: #fff;
+  background: var(--color-error);
+  border-radius: 999px;
+}

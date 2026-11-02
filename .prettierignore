@@ -1,0 +1,5 @@
+dist
+coverage
+package-lock.json
+docs
+src/fonts/manifest.ts
