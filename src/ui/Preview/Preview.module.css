@@ -1,0 +1,44 @@
+.figure {
+  margin: 0;
+  overflow: auto;
+}
+
+.figure svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  font-family: inherit;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.unit {
+  white-space: nowrap;
+}
+
+.empty {
+  display: grid;
+  place-content: center;
+  min-height: 320px;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+}
+
+.empty strong {
+  color: var(--color-error);
+}
+
+.empty p {
+  margin: 8px 0 0;
+}
