@@ -58,6 +58,10 @@ export const ko = {
     imbalance: (name: string, inflow: string, outflow: string) =>
       `${quoted(name, '으로/로')} 들어오는 값(${inflow})과 나가는 값(${outflow})이 다릅니다.`,
     disconnected: (count: number) => `서로 이어지지 않은 다이어그램 묶음이 ${count}개 있습니다.`,
+    timeBackward: (source: string, target: string, from: string, to: string) =>
+      `"${source} → ${target}" 흐름이 시간을 거슬러 갑니다(${from} → ${to}). 노드의 시기를 확인하세요.`,
+    timeInferred: (count: number) =>
+      `시기를 정하지 않은 노드 ${count}개는 연결된 노드를 따라 자동으로 놓았습니다. [설정 → 시기]에서 정할 수 있습니다.`,
     rowLimit: (max: number) => `최대 ${max}행까지 입력할 수 있습니다.`,
     rowWarn: (count: number) => `행이 ${count}개입니다. 미리보기가 느려질 수 있습니다.`,
   },

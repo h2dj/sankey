@@ -2,6 +2,8 @@ import type { ChartModel } from '../../core/chartModel';
 import type { Settings } from '../../core/types';
 import { editorStore, useEditor } from '../../state/store';
 import { ColorSection } from './ColorSection';
+import { TimelineSection } from './TimelineSection';
+import { timelineActive } from '../../core/timeline';
 import { Checkbox, Radio, Section, Select, Slider, TextField } from './controls';
 import styles from './SettingsPanel.module.css';
 
@@ -10,12 +12,14 @@ interface Props {
   model: ChartModel | null;
 }
 
-const set = (patch: Partial<Settings>) => editorStore.getState().setSettings(patch);
+const set = (patch: Partial<Settings>, opts?: { coalesce?: boolean }) =>
+  editorStore.getState().setSettings(patch, opts);
 
 export function SettingsPanel({ model }: Props) {
   const meta = useEditor((s) => s.doc.meta);
   const settings = useEditor((s) => s.doc.settings);
   const setMeta = editorStore.getState().setMeta;
+  const timelineOn = timelineActive(settings.timeline);
 
   return (
     <div className={styles.panel}>
@@ -47,6 +51,8 @@ export function SettingsPanel({ model }: Props) {
         />
         <Select
           label="노드 정렬"
+          disabled={timelineOn}
+          hint={timelineOn ? '시기별로 배치하는 동안은 시기가 열을 정합니다.' : undefined}
           value={settings.nodeAlign}
           options={[
             ['justify', '양끝 맞춤(끝 노드를 마지막 열로)'],
@@ -80,6 +86,10 @@ export function SettingsPanel({ model }: Props) {
           unit="px"
           onChange={(minLinkWidth) => set({ minLinkWidth })}
         />
+      </Section>
+
+      <Section title="시기">
+        <TimelineSection timeline={settings.timeline} model={model} onChange={set} />
       </Section>
 
       <Section title="레이블">

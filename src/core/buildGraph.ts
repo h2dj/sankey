@@ -1,9 +1,11 @@
 import { formatValue } from './format';
+import { resolveTimeline } from './timeline';
 import { validate } from './validate';
 import type { BuildResult, GraphLink, GraphNode, Issue, Row, Settings } from './types';
 import { ko } from '../i18n/ko';
 
-type BuildSettings = Pick<Settings, 'duplicateMode' | 'numberFormat'>;
+type BuildSettings = Pick<Settings, 'duplicateMode' | 'numberFormat'> &
+  Partial<Pick<Settings, 'timeline'>>;
 
 /**
  * 입력 행 → 생키 그래프. 같은 이름(정규화 기준)은 같은 노드가 된다.
@@ -94,6 +96,7 @@ export function buildGraph(rows: readonly Row[], settings: BuildSettings): Build
     });
   } else {
     issues.push(...imbalanceIssues(nodeList, settings));
+    issues.push(...timelineIssues(nodeList, links, settings));
     const groups = countComponents(nodeList, links);
     if (groups > 1) {
       issues.push({
@@ -110,6 +113,34 @@ export function buildGraph(rows: readonly Row[], settings: BuildSettings): Build
     issues,
     drawable: links.length > 0 && !cycle,
   };
+}
+
+/** 시기 모드: 시간을 거슬러 가는 흐름(경고), 자동으로 놓은 노드(안내) */
+function timelineIssues(nodes: GraphNode[], links: GraphLink[], settings: BuildSettings): Issue[] {
+  if (!settings.timeline) return [];
+  const placement = resolveTimeline(nodes, links, settings.timeline);
+  if (!placement) return [];
+  const label = new Map(nodes.map((n) => [n.id, n.label]));
+  const name = (id: string) => placement.periods[placement.period.get(id)!]!.label;
+  const out: Issue[] = placement.backward.map((l) => ({
+    level: 'warning',
+    code: 'TIME_BACKWARD',
+    rowId: l.rowIds[0]!,
+    message: ko.issue.timeBackward(
+      label.get(l.source)!,
+      label.get(l.target)!,
+      name(l.source),
+      name(l.target),
+    ),
+  }));
+  if (placement.inferred.size > 0) {
+    out.push({
+      level: 'info',
+      code: 'TIME_INFERRED',
+      message: ko.issue.timeInferred(placement.inferred.size),
+    });
+  }
+  return out;
 }
 
 /** 중간 노드(유입·유출이 모두 있는 노드)의 값이 다르면 경고. */

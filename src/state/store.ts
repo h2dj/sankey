@@ -2,6 +2,7 @@ import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { LIMITS, createRow } from '../core/config';
 import { applyPaste, insertRow, removeRow, updateCell } from '../core/rows';
+import { periodsFromLabels } from '../core/timeline';
 import { DEFAULT_SAMPLE_ID, loadSample } from '../core/samples';
 import { initialDoc } from './initialDoc';
 import { track } from './observe';
@@ -27,13 +28,20 @@ export interface EditorActions {
   /** 붙여넣기. 버린 행 수를 돌려준다. */
   paste(startRowId: string, startField: RowField, matrix: string[][]): { droppedRows: number };
   setMeta(patch: Partial<DiagramMeta>): void;
-  setSettings(patch: Partial<Settings>): void;
+  /** coalesce=false면 연속 변경으로 묶지 않고 실행 취소 한 단계로 남긴다(버튼 조작 등) */
+  setSettings(patch: Partial<Settings>, opts?: { coalesce?: boolean }): void;
   /**
    * CSV에서 가져온 행을 넣는다. replace는 표를 바꾸고, append는 뒤에 붙인다.
    * unit이 있으면 replace일 때 또는 현재 단위가 비어 있을 때 단위도 바꾼다.
    * 행 수 제한으로 버린 행 수를 돌려준다. 실행 취소 한 번으로 되돌린다.
    */
-  importRows(rows: Row[], mode: 'replace' | 'append', unit?: string): { dropped: number };
+  importRows(
+    rows: Row[],
+    mode: 'replace' | 'append',
+    unit?: string,
+    /** CSV 시기 열에서 읽은 노드 → 시기 이름. 있으면 시기 모드를 켜고 시기를 만든다 */
+    nodePeriodLabels?: ReadonlyMap<string, string>,
+  ): { dropped: number; periodsAssigned: number };
   /** 예시 불러오기 등 문서 전체 교체. 실행 취소로 되돌릴 수 있다. */
   replaceDoc(doc: DiagramDoc): void;
   undo(): void;
@@ -106,27 +114,61 @@ export function createEditorStore(
         track('settings_change', { key: keys });
       },
 
-      setSettings(patch) {
+      setSettings(patch, opts) {
         const { doc } = get();
         // 슬라이더·색 선택기를 끄는 동안의 연속 변경은 한 번의 실행 취소로 묶는다.
         const keys = Object.keys(patch).sort().join(',');
-        commit({ ...doc, settings: { ...doc.settings, ...patch } }, `settings:${keys}`);
+        commit(
+          { ...doc, settings: { ...doc.settings, ...patch } },
+          opts?.coalesce === false ? undefined : `settings:${keys}`,
+        );
         track('settings_change', { key: keys });
       },
 
-      importRows(rows, mode, unit) {
+      importRows(rows, mode, unit, nodePeriodLabels) {
         const { doc } = get();
         const kept = mode === 'append' ? doc.rows.filter((r) => !isBlank(r)) : [];
         const room = Math.max(0, LIMITS.maxRows - kept.length);
         const added = rows.slice(0, room);
         const nextRows = [...kept, ...added];
         const setUnit = unit && (mode === 'replace' || !doc.meta.unit.trim());
+        let settings = doc.settings;
+        const labels = nodePeriodLabels ?? new Map<string, string>();
+        if (labels.size > 0) {
+          const t = doc.settings.timeline;
+          // 바꾸기: 시기 목록을 CSV의 시기로 새로 정리(같은 이름의 기존 시기는 id 유지).
+          // 추가: 기존 시기 순서를 지키고 새 이름만 뒤에 붙인다.
+          const base =
+            mode === 'replace'
+              ? t.periods.filter((p) => [...labels.values()].includes(p.label))
+              : t.periods;
+          let periods = periodsFromLabels([...labels.values()], base);
+          if (mode === 'replace') {
+            periods = [...periods].sort((a, b) =>
+              a.label.localeCompare(b.label, 'ko', { numeric: true }),
+            );
+          }
+          const idOf = new Map(periods.map((p) => [p.label, p.id]));
+          const assigned = Object.fromEntries(
+            [...labels].map(([node, label]) => [node, idOf.get(label)!]),
+          );
+          settings = {
+            ...doc.settings,
+            timeline: {
+              ...t,
+              enabled: true,
+              periods,
+              nodePeriods: mode === 'replace' ? assigned : { ...t.nodePeriods, ...assigned },
+            },
+          };
+        }
         commit({
           ...doc,
           rows: nextRows.length > 0 ? nextRows : [createRow()],
           meta: setUnit ? { ...doc.meta, unit } : doc.meta,
+          settings,
         });
-        return { dropped: rows.length - added.length };
+        return { dropped: rows.length - added.length, periodsAssigned: labels.size };
       },
 
       replaceDoc(next) {

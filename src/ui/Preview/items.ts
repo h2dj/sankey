@@ -22,3 +22,8 @@ export function nodeAriaLabel(n: ChartNode): string {
 
 /** 미리보기 확대 단계 */
 export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4] as const;
+
+/** 시기 띠 색(내보내기 core/svgDocument.ts와 같은 값) */
+export const BAND_FILL = '#EEF2F7';
+export const BAND_LINE = '#C9D1D9';
+export const PERIOD_MUTED = '#57606A';

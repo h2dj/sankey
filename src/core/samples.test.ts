@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SAMPLE_ID, SAMPLES, loadSample } from './samples';
 
 describe('samples', () => {
-  it('기획서 §3 사용 사례 4종을 제공한다', () => {
-    expect(SAMPLES.map((s) => s.id)).toEqual(['budget', 'energy', 'program', 'survey']);
+  it('기획서 §3 사용 사례 4종과 시기별 예시를 제공한다', () => {
+    expect(SAMPLES.map((s) => s.id)).toEqual(['budget', 'energy', 'program', 'survey', 'history']);
     expect(SAMPLES.some((s) => s.id === DEFAULT_SAMPLE_ID)).toBe(true);
   });
 
