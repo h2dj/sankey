@@ -15,6 +15,8 @@ interface SampleDef {
   rows: SampleRow[];
   /** 시기별 배치 예시: 시기 이름(순서대로)과 노드 → 시기 이름 */
   timeline?: { periods: string[]; nodes: Record<string, string> };
+  /** 노드 메모 예시 */
+  notes?: Record<string, string>;
 }
 
 const DEFS: readonly SampleDef[] = [
@@ -121,6 +123,10 @@ const DEFS: readonly SampleDef[] = [
         '지역 IT교실': '2020',
       },
     },
+    notes: {
+      희망제작소: '시민 제안 플랫폼에서 출발(가상 설명)',
+      공동체IT: '비영리 IT 지원 협동조합으로 전환(가상 설명)',
+    },
   },
 ];
 
@@ -149,6 +155,7 @@ export function loadSample(id: string): DiagramDoc {
       }),
     ),
   });
+  if (def.notes) doc.nodeNotes = { ...def.notes };
   if (def.timeline) {
     const periods = def.timeline.periods.map((label, i) => ({ id: `${def.id}-${i}`, label }));
     const idOf = new Map(periods.map((p) => [p.label, p.id]));

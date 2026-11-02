@@ -4,12 +4,15 @@ import type { BuildResult, DiagramMeta, Row, Settings } from '../../core/types';
 import { selectionStore, useSelection, type Selection } from '../../state/selection';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { track } from '../../state/observe';
-import { focusCell } from '../focus';
+import { focusCell, focusNote } from '../focus';
 import { ZOOM_STEPS, linkKey, nodeKey, splitKey, type ItemKey } from './items';
 import { SankeyChart, type ChartInteraction } from './SankeyChart';
 import { Tooltip, type TooltipState } from './Tooltip';
 import { ZoomControls } from './ZoomControls';
 import styles from './Preview.module.css';
+
+/** 노드를 누른 뒤 두 번 누르기를 기다리는 시간(ms) */
+const DOUBLE_CLICK_MS = 250;
 
 interface Props {
   graph: BuildResult;
@@ -79,6 +82,12 @@ function InteractiveChart({
   const [hoverKey, setHoverKey] = useState<ItemKey | null>(null);
   const [activeKey, setActiveKey] = useState<ItemKey | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  // 노드 클릭은 두 번 누르기(메모)와 구분하려고 잠깐 기다렸다 실행한다.
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = null;
+  };
   const selection = useSelection((s) => s.selection);
 
   // 키보드 이동 순서: 노드(왼쪽 열부터 위→아래), 그다음 흐름
@@ -148,6 +157,11 @@ function InteractiveChart({
     activeKey: currentKey,
     highlight,
     activePeriodId: selection?.periodId ?? null,
+    onNodeNote: (nodeId) => {
+      cancelClick();
+      track('chart_select', { kind: 'note' });
+      focusNote(nodeId);
+    },
     onPeriodActivate: (periodId) => {
       const p = model.periods.find((x) => x.id === periodId);
       if (!p) return;
@@ -173,7 +187,14 @@ function InteractiveChart({
       setHoverKey(null);
       setTooltip(null);
     },
-    onActivate: activate,
+    onActivate: (key) => {
+      if (splitKey(key)[0] !== 'node') return activate(key);
+      cancelClick();
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        activate(key);
+      }, DOUBLE_CLICK_MS);
+    },
     onKeyDown: (key, e: KeyboardEvent<SVGElement>) => {
       const i = order.indexOf(key);
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -191,6 +212,9 @@ function InteractiveChart({
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         activate(key);
+      } else if ((e.key === 'm' || e.key === 'M') && splitKey(key)[0] === 'node') {
+        e.preventDefault();
+        focusNote(splitKey(key)[1]);
       } else if (e.key === 'Escape') {
         selectionStore.getState().clear();
         setTooltip(null);
@@ -264,9 +288,18 @@ function InteractiveChart({
         </table>
       </div>
       <p className={styles.hint}>
-        흐름이나 노드를 누르면 해당 행으로 이동합니다. 키보드: Tab으로 차트에 들어가 방향키로 이동,
-        Enter로 선택.
+        흐름이나 노드를 누르면 해당 행으로 이동합니다. 노드를 두 번 누르면(키보드: M) 메모를 쓸 수
+        있습니다. 키보드: Tab으로 차트에 들어가 방향키로 이동, Enter로 선택.
       </p>
+      {model.footnotes.length > 0 && (
+        <ol className={styles.footnotes} aria-label="노드 메모">
+          {model.footnotes.map((f) => (
+            <li key={f.nodeId} data-footnote={f.nodeId}>
+              <span className={styles.footMark}>{f.mark}</span> <b>{f.label}</b> — {f.text}
+            </li>
+          ))}
+        </ol>
+      )}
       {(meta.description || meta.unit) && (
         <p className={styles.caption}>
           {meta.description}

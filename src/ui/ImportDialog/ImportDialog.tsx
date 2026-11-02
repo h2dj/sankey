@@ -48,12 +48,16 @@ const FIELDS = [
   'memo',
   'sourcePeriod',
   'targetPeriod',
+  'sourceNote',
+  'targetNote',
 ] as const;
 const REQUIRED = new Set<string>(['source', 'target', 'value']);
 const FIELD_LABEL: Record<(typeof FIELDS)[number], string> = {
   ...ko.columns,
   sourcePeriod: '출발 시기',
   targetPeriod: '도착 시기',
+  sourceNote: '출발 노드 메모',
+  targetNote: '도착 노드 메모',
 };
 
 async function readCsvFile(file: File): Promise<State> {
@@ -102,7 +106,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
   const mapped = useMemo(() => {
     if (state.step !== 'map') return null;
     const problem = checkMapping(state.mapping, state.csv.columnCount);
-    const { rows, dropped, nodePeriods, periodConflicts } = recordsToRows(
+    const { rows, dropped, nodePeriods, periodConflicts, nodeNotes } = recordsToRows(
       state.csv,
       state.mapping,
       state.hasHeader,
@@ -115,6 +119,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
       dropped,
       nodePeriods,
       periodConflicts,
+      nodeNotes,
       errors: issues.filter((i) => i.level === 'error').length,
     };
   }, [state]);
@@ -123,7 +128,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
     if (state.step !== 'map' || !mapped || mapped.problem) return;
     const { dropped, periodsAssigned } = editorStore
       .getState()
-      .importRows(mapped.rows, mode, state.csv.unit, mapped.nodePeriods);
+      .importRows(mapped.rows, mode, state.csv.unit, mapped.nodePeriods, mapped.nodeNotes);
     const imported = mapped.rows.length - dropped;
     track('import_ok', {
       rows: imported,
@@ -316,6 +321,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
                   ` 최대 ${LIMITS.maxRows}행까지만 가져옵니다.`}
                 {mapped.nodePeriods.size > 0 &&
                   ` 노드 ${mapped.nodePeriods.size}개의 시기를 읽었습니다.`}
+                {mapped.nodeNotes.size > 0 && ` 노드 메모 ${mapped.nodeNotes.size}개를 읽었습니다.`}
                 {mapped.periodConflicts > 0 &&
                   ` 같은 노드에 다른 시기가 적힌 곳 ${mapped.periodConflicts}건은 처음 값을 씁니다.`}
                 {mapped.errors > 0 &&

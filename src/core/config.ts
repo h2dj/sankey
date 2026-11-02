@@ -10,6 +10,8 @@ export const LIMITS = {
   warnRows: 200,
   /** 입력 후 다시 그리기까지 기다리는 시간(ms) */
   renderDebounceMs: 150,
+  /** 노드 메모 최대 글자 수 */
+  maxNoteLength: 500,
   /** 자동 저장 지연(ms) */
   autosaveDelayMs: 1000,
 } as const;
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   duplicateMode: 'merge',
   numberFormat: { decimals: 'auto', thousands: true },
   timeline: { enabled: false, periods: [], nodePeriods: {}, showBands: true, showTotals: false },
+  noteDisplay: 'tooltip',
 };
 
 export const EMPTY_META: DiagramMeta = { title: '', description: '', unit: '' };
@@ -49,6 +52,7 @@ export function createDoc(init: { meta?: Partial<DiagramMeta>; rows?: Row[] } = 
     schemaVersion: SCHEMA_VERSION,
     meta: { ...EMPTY_META, ...init.meta },
     rows: init.rows ?? [createRow()],
+    nodeNotes: {},
     settings: structuredClone(DEFAULT_SETTINGS),
     updatedAt: new Date().toISOString(),
   };

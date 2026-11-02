@@ -17,8 +17,11 @@ export function linkAriaLabel(l: ChartLink): string {
 }
 
 export function nodeAriaLabel(n: ChartNode): string {
-  return `${n.label}, ${n.valueText}`;
+  return `${n.label}${n.noteMark ? ` ${n.noteMark}` : ''}, ${n.valueText}${n.note ? `, 메모: ${n.note}` : ''}`;
 }
+
+/** 각주 번호·메모 줄 색 */
+export const NOTE_MARK_COLOR = '#2F6FB3';
 
 /** 미리보기 확대 단계 */
 export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4] as const;

@@ -2,6 +2,7 @@ import type { ChartModel } from '../../core/chartModel';
 import type { Settings } from '../../core/types';
 import { editorStore, useEditor } from '../../state/store';
 import { ColorSection } from './ColorSection';
+import { NotesSection } from './NotesSection';
 import { TimelineSection } from './TimelineSection';
 import { timelineActive } from '../../core/timeline';
 import { Checkbox, Radio, Section, Select, Slider, TextField } from './controls';
@@ -90,6 +91,10 @@ export function SettingsPanel({ model }: Props) {
 
       <Section title="시기">
         <TimelineSection timeline={settings.timeline} model={model} onChange={set} />
+      </Section>
+
+      <Section title="노드 메모">
+        <NotesSection noteDisplay={settings.noteDisplay} model={model} onChange={set} />
       </Section>
 
       <Section title="레이블">

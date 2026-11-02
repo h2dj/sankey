@@ -54,6 +54,8 @@ export interface Settings {
   numberFormat: { decimals: number | 'auto'; thousands: boolean };
   /** 시기 축 배치(시기별로 열을 고정) */
   timeline: TimelineSettings;
+  /** 노드 메모를 보이는 방식: 툴팁만 / 레이블 아래 / 레이블에 번호 + 차트 아래 각주 */
+  noteDisplay: 'tooltip' | 'below' | 'footnote';
 }
 
 /** 시기(시간 축의 한 칸). 예: 2019년, 1단계 준비기 */
@@ -79,6 +81,8 @@ export interface DiagramDoc {
   schemaVersion: 1;
   meta: DiagramMeta;
   rows: Row[];
+  /** 정규화된 노드 이름 → 노드 메모(차트에 툴팁·레이블 아래·각주로 보일 수 있다) */
+  nodeNotes: Record<string, string>;
   settings: Settings;
   /** ISO 8601 */
   updatedAt: string;

@@ -1,7 +1,7 @@
 import { formatWithUnit } from './format';
 import { computeLayout, suggestHeight, type LaidLink, type LaidNode } from './layout';
 import { NEUTRAL_LINK_COLOR, nodeColors } from './palette';
-import { estimateTextWidth } from './text';
+import { estimateTextWidth, wrapText } from './text';
 import { resolveTimeline } from './timeline';
 import { computeTimelineLayout, type PeriodBand } from './timelineLayout';
 import type { BuildResult, DiagramMeta, Row, Settings } from './types';
@@ -21,6 +21,20 @@ export interface ChartNode extends LaidNode {
   /** 시기 모드: 놓인 시기 번호와 자동 추정 여부 */
   periodIndex?: number;
   periodInferred?: boolean;
+  /** 노드 메모(있을 때) */
+  note?: string;
+  /** 각주 모드: 레이블 뒤에 붙는 번호("[1]") */
+  noteMark?: string;
+  /** 레이블 아래 모드: 줄바꿈한 메모(최대 2줄) */
+  noteLines?: string[];
+}
+
+/** 각주 모드에서 차트 아래에 보일 메모 목록 */
+export interface ChartFootnote {
+  mark: string;
+  nodeId: string;
+  label: string;
+  text: string;
 }
 
 /** 시기 모드의 시기 띠·머리글 */
@@ -64,6 +78,9 @@ export interface ChartModel {
   showBands: boolean;
   /** 시기 머리글 높이(시기 모드가 아니면 0) */
   headerHeight: number;
+  noteDisplay: Settings['noteDisplay'];
+  /** 각주 모드가 아니면 빈 배열 */
+  footnotes: ChartFootnote[];
 }
 
 type ModelSettings = Settings;
@@ -78,9 +95,14 @@ export function buildChartModel(
   meta: Pick<DiagramMeta, 'unit'>,
   settings: ModelSettings,
   width = DEFAULT_CHART_WIDTH,
+  notes: Readonly<Record<string, string>> = {},
 ): ChartModel {
   const fmt = (v: number) => formatWithUnit(v, meta.unit, settings.numberFormat);
-  const labelText = (n: LaidNode) => (settings.showValues ? `${n.label} ${fmt(n.value)}` : n.label);
+  const noteOf = (id: string) => notes[id]?.trim() || undefined;
+  const footnoteMode = settings.noteDisplay === 'footnote';
+  const labelText = (n: LaidNode) =>
+    (settings.showValues ? `${n.label} ${fmt(n.value)}` : n.label) +
+    (footnoteMode && noteOf(n.id) ? ' [00]' : '');
 
   // 시기 모드: 노드를 지정한 시기 열에 놓고, 위에 시기 머리글 자리를 둔다.
   const placement = resolveTimeline(graph.nodes, graph.links, settings.timeline);
@@ -150,8 +172,27 @@ export function buildChartModel(
         periodIndex: placement.period.get(n.id)!,
         periodInferred: placement.inferred.has(n.id),
       }),
+      ...(noteOf(n.id) && { note: noteOf(n.id)! }),
     };
   });
+
+  // 노드 메모: 레이블 아래(최대 2줄) 또는 읽는 순서(왼쪽 열 → 위)대로 번호를 단 각주
+  const footnotes: ChartFootnote[] = [];
+  if (settings.noteDisplay === 'below') {
+    const maxW = Math.min(220, width * 0.24);
+    const noteFs = fs * 0.85;
+    for (const n of nodes) {
+      if (!n.note) continue;
+      const lines = wrapText(n.note, maxW, noteFs);
+      n.noteLines = lines.length > 2 ? [lines[0]!, `${lines[1]!.replace(/.$/u, '')}…`] : lines;
+    }
+  } else if (footnoteMode) {
+    const ordered = nodes.filter((n) => n.note).sort((a, b) => a.x0 - b.x0 || a.y0 - b.y0);
+    ordered.forEach((n, i) => {
+      n.noteMark = `[${i + 1}]`;
+      footnotes.push({ mark: n.noteMark, nodeId: n.id, label: n.label, text: n.note! });
+    });
+  }
 
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const links: ChartLink[] = layout.links.map((l) => {
@@ -223,6 +264,8 @@ export function buildChartModel(
     periods,
     showBands: !!placement && settings.timeline.showBands,
     headerHeight,
+    noteDisplay: settings.noteDisplay,
+    footnotes,
   };
 }
 

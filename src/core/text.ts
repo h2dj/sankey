@@ -21,3 +21,30 @@ export function estimateTextWidth(text: string, fontSize: number): number {
   }
   return em * fontSize;
 }
+
+/** 폭에 맞춰 단어 단위로 줄을 나눈다. 한 단어가 너무 길면 글자 단위로 자른다. */
+export function wrapText(text: string, maxWidth: number, fontSize: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split(/\r?\n/)) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (estimateTextWidth(candidate, fontSize) <= maxWidth) {
+        line = candidate;
+        continue;
+      }
+      if (line) lines.push(line);
+      line = '';
+      // 단어 하나가 폭을 넘으면 글자 단위로 자른다.
+      for (const ch of word) {
+        if (estimateTextWidth(line + ch, fontSize) > maxWidth && line) {
+          lines.push(line);
+          line = '';
+        }
+        line += ch;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  return lines;
+}

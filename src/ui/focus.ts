@@ -28,3 +28,25 @@ export function focusCell(rowId: string, field: RowField = 'source'): boolean {
   );
   return true;
 }
+
+/**
+ * 설정 → 노드 메모의 해당 노드 메모 칸으로 초점을 옮긴다. 접힌 섹션은 펼치고,
+ * 좁은 화면에서는 설정 탭으로 바꾼다.
+ */
+export function focusNote(nodeId: string): boolean {
+  const find = () =>
+    document.querySelector<HTMLTextAreaElement>(`[data-note-for="${CSS.escape(nodeId)}"]`);
+  const el = find();
+  if (!el) return false;
+  const details = el.closest('details');
+  if (details && !details.open) details.open = true;
+  if (el.offsetParent === null) layoutStore.getState().setTab('settings');
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const t = find();
+      t?.scrollIntoView({ block: 'center' });
+      t?.focus();
+    }),
+  );
+  return true;
+}

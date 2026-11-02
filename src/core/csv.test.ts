@@ -91,6 +91,8 @@ describe('parseCsv: 구분자·머리글', () => {
       memo: null,
       sourcePeriod: null,
       targetPeriod: null,
+      sourceNote: null,
+      targetNote: null,
     });
     expect(rowsOf(csv)).toHaveLength(3);
   });
@@ -162,6 +164,8 @@ describe('parseCsv: 오류 안내', () => {
           memo: null,
           sourcePeriod: null,
           targetPeriod: null,
+          sourceNote: null,
+          targetNote: null,
         },
         3,
       ),
@@ -176,6 +180,8 @@ describe('parseCsv: 오류 안내', () => {
           memo: null,
           sourcePeriod: null,
           targetPeriod: null,
+          sourceNote: null,
+          targetNote: null,
         },
         3,
       ),
@@ -190,6 +196,8 @@ describe('parseCsv: 오류 안내', () => {
           memo: null,
           sourcePeriod: null,
           targetPeriod: null,
+          sourceNote: null,
+          targetNote: null,
         },
         3,
       ),

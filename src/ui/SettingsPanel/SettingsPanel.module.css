@@ -206,3 +206,28 @@
 .nodeColors {
   min-width: 0;
 }
+
+.noteList {
+  gap: 6px !important;
+}
+
+.noteList label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.noteList textarea {
+  width: 100%;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.8125rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.noteList li {
+  display: block !important;
+}

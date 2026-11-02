@@ -58,6 +58,7 @@ export function Tooltip({ state, link, node, rowNumber, periods = [] }: Props) {
               {node.periodInferred && ' (자동으로 놓음)'}
             </span>
           )}
+          {node.note && <span className={styles.tipNote}>메모: {node.note}</span>}
           {node.inflow > 0 && node.outflow > 0 && (
             <span>
               들어옴 {fmtPlain(node.inflow)} · 나감 {fmtPlain(node.outflow)}
