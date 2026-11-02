@@ -195,7 +195,11 @@ function InteractiveChart({
           }
         }}
       >
-        <div className={styles.canvas} style={{ width: `${zoom * 100}%` }}>
+        {/* 좁은 화면에서는 최소 폭(560px)으로 그려 글자를 줄이지 않고 가로로 스크롤한다. */}
+        <div
+          className={styles.canvas}
+          style={{ width: `${zoom * 100}%`, minWidth: `${model.width * zoom}px` }}
+        >
           <SankeyChart
             model={model}
             title={meta.title}
@@ -212,6 +216,30 @@ function InteractiveChart({
           rowNumber={rowNumber}
         />
       )}
+      {/* 스크린리더용: 차트의 흐름을 표로도 제공한다(T4.3). */}
+      <div className="sr-only">
+        <table>
+          <caption>{`${meta.title || '생키 다이어그램'} 흐름 목록`}</caption>
+          <thead>
+            <tr>
+              <th scope="col">출발 노드</th>
+              <th scope="col">도착 노드</th>
+              <th scope="col">값</th>
+              <th scope="col">출발 노드에서 나가는 값 중 비율</th>
+            </tr>
+          </thead>
+          <tbody>
+            {model.links.map((l) => (
+              <tr key={l.id}>
+                <td>{l.sourceLabel}</td>
+                <td>{l.targetLabel}</td>
+                <td>{l.valueText}</td>
+                <td>{Math.round(l.shareOfSource * 100)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className={styles.hint}>
         흐름이나 노드를 누르면 해당 행으로 이동합니다. 키보드: Tab으로 차트에 들어가 방향키로 이동,
         Enter로 선택.

@@ -19,3 +19,8 @@ export async function pasteText(page: Page, row: number, column: string, text: s
     );
   }, text);
 }
+
+export const loadSampleUI = async (page: Page, name: string) => {
+  await page.getByLabel('예시 데이터').selectOption({ label: name });
+  await page.getByRole('button', { name: '예시 불러오기' }).click();
+};

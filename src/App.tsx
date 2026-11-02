@@ -3,9 +3,15 @@ import { buildGraph } from './core/buildGraph';
 import { DEFAULT_CHART_WIDTH, buildChartModel } from './core/chartModel';
 import { LIMITS } from './core/config';
 import { useDebounced } from './hooks/useDebounced';
+import { useMediaQuery } from './hooks/useMediaQuery';
+import { useLayout, type PanelTab } from './state/layout';
+import { PanelTabs } from './ui/PanelTabs/PanelTabs';
 import { ko } from './i18n/ko';
 import { selectionStore } from './state/selection';
-import { editorStore, useEditor } from './state/store';
+import { announce } from './state/announce';
+import { startAutosave } from './state/autosave';
+import { browserStorage } from './state/initialDoc';
+import { editorStore, startup, useEditor } from './state/store';
 import { DataTable } from './ui/DataTable/DataTable';
 import { IssueSummary } from './ui/IssueSummary/IssueSummary';
 import { groupIssuesByRow } from './ui/issues';
@@ -15,6 +21,7 @@ import { TopBar } from './ui/TopBar/TopBar';
 import { ExportDialog } from './ui/ExportDialog/ExportDialog';
 import { ImportDialog } from './ui/ImportDialog/ImportDialog';
 import { Toast } from './ui/Toast/Toast';
+import { NewDiagramDialog } from './ui/TopBar/NewDiagramDialog';
 
 /** 이보다 좁은 화면에서는 이 폭으로 그려 축소해 보인다(레이블 겹침 방지). */
 const MIN_CHART_WIDTH = 560;
@@ -44,22 +51,38 @@ export function App() {
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
+
+  // 960px 미만: 데이터·미리보기·설정을 탭으로 나눈다(T4.2).
+  const narrow = useMediaQuery('(max-width: 959px)');
+  const tab = useLayout((s) => s.tab);
+  const panelProps = (t: PanelTab) =>
+    narrow
+      ? { role: 'tabpanel', id: `tabpanel-${t}`, 'aria-labelledby': `tab-${t}`, hidden: tab !== t }
+      : { 'aria-labelledby': `panel-${t}` };
+  const errorCount = graph.issues.filter((i) => i.level === 'error').length;
 
   useUndoShortcuts();
+  useAutosave();
 
   return (
     <div className="app">
+      <a className="skip-link" href="#workspace">
+        작업 영역으로 건너뛰기
+      </a>
       <TopBar
+        onNew={() => setNewOpen(true)}
         onImport={() => {
           setDroppedFile(null);
           setImportOpen(true);
         }}
         onExport={() => setExportOpen(true)}
       />
-      <main className="workspace">
+      {narrow && <PanelTabs errorCount={errorCount} />}
+      <main className="workspace" id="workspace" tabIndex={-1}>
         <section
           className={dragOver ? 'panel panel--data panel--drop' : 'panel panel--data'}
-          aria-labelledby="panel-data"
+          {...panelProps('data')}
           onDragOver={(e) => {
             if (!e.dataTransfer.types.includes('Files')) return;
             e.preventDefault();
@@ -81,7 +104,7 @@ export function App() {
           <DataTable issuesByRow={issuesByRow} unit={doc.meta.unit} />
           <IssueSummary issues={graph.issues} rows={settled.rows} />
         </section>
-        <section className="panel panel--preview" aria-labelledby="panel-preview">
+        <section className="panel panel--preview" {...panelProps('preview')}>
           <h2 id="panel-preview">{ko.panel.preview}</h2>
           <Preview
             graph={graph}
@@ -92,7 +115,7 @@ export function App() {
             onWidthChange={setPreviewWidth}
           />
         </section>
-        <section className="panel panel--settings" aria-labelledby="panel-settings">
+        <section className="panel panel--settings" {...panelProps('settings')}>
           <h2 id="panel-settings">{ko.panel.settings}</h2>
           <SettingsPanel model={model} />
         </section>
@@ -105,6 +128,12 @@ export function App() {
           onClose={() => setExportOpen(false)}
           drawable={graph.drawable}
           previewWidth={chartWidth}
+        />
+      )}
+      {newOpen && (
+        <NewDiagramDialog
+          onClose={() => setNewOpen(false)}
+          onExportFirst={() => setExportOpen(true)}
         />
       )}
       <Toast />
@@ -130,5 +159,14 @@ function useUndoShortcuts() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+}
+
+/** 브라우저 임시 저장 시작(F-07). 저장된 작업을 읽지 못했으면 알린다. */
+function useAutosave() {
+  useEffect(() => {
+    const stop = startAutosave(browserStorage(), startup.load);
+    if (startup.load.status === 'invalid') announce(ko.save.invalid);
+    return stop;
   }, []);
 }

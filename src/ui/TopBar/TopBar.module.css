@@ -19,10 +19,49 @@
   overflow-wrap: anywhere;
 }
 
-.notice {
+.save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 4px;
   margin: 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+}
+
+.saveWarn {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.saveHelp {
+  position: relative;
+  margin-left: 8px;
+}
+
+.saveHelp summary {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.saveHelp ul {
+  position: absolute;
+  z-index: 20;
+  top: 1.6em;
+  left: 0;
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+
+.saveHelp li + li {
+  margin-top: 4px;
 }
 
 .actions {

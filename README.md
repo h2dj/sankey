@@ -5,6 +5,7 @@
 
 - 개발 계획: [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)
 - 결정 기록: [docs/DECISIONS.md](docs/DECISIONS.md)
+- 배포 안내: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## 개발
 

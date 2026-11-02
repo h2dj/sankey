@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Download, type Page } from '@playwright/test';
-import { cell, links } from './helpers';
+import { cell, links, loadSampleUI } from './helpers';
 
 const dialog = (page: Page) => page.getByRole('dialog', { name: '내려받기' });
 
@@ -101,7 +101,7 @@ test('A6: CSV를 내려받아 다시 불러오면 같은 데이터', async ({ pa
   expect(text).toContain('출발 노드,도착 노드,값 (백만 원),색상 그룹,메모\r\n');
 
   // 표를 지우고 다시 불러온다
-  await page.getByLabel('예시 불러오기').selectOption({ label: '에너지 흐름' });
+  await loadSampleUI(page, '에너지 흐름');
   await expect(links(page)).toHaveCount(8);
   await page.getByRole('button', { name: 'CSV 가져오기' }).click();
   await page.getByLabel('CSV 파일 선택').setInputFiles({

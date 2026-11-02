@@ -3,6 +3,7 @@ import { createStore } from 'zustand/vanilla';
 import { LIMITS, createRow } from '../core/config';
 import { applyPaste, insertRow, removeRow, updateCell } from '../core/rows';
 import { DEFAULT_SAMPLE_ID, loadSample } from '../core/samples';
+import { initialDoc } from './initialDoc';
 import type { DiagramDoc, DiagramMeta, Row, RowField, Settings } from '../core/types';
 
 const HISTORY_LIMIT = 100;
@@ -140,7 +141,10 @@ export function createEditorStore(
   });
 }
 
-export const editorStore = createEditorStore();
+/** 앱 시작 시 불러온 결과(저장된 작업 또는 기본 예시) */
+export const startup = initialDoc();
+
+export const editorStore = createEditorStore(startup.doc);
 
 export function useEditor<T>(selector: (s: EditorStore) => T): T {
   return useStore(editorStore, selector);

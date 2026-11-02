@@ -134,3 +134,37 @@ button.primary:hover:not(:disabled) {
   outline-offset: -6px;
   background: var(--color-accent-soft);
 }
+
+[hidden] {
+  display: none !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 200;
+  padding: 8px 12px;
+  color: #fff;
+  background: var(--color-accent);
+  border-radius: 6px;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+.workspace:focus {
+  outline: none;
+}
+
+/* 좁은 화면: 탭으로 한 패널씩 보인다. */
+@media (max-width: 959px) {
+  .workspace {
+    padding: 8px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+}
