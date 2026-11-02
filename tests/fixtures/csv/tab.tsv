@@ -1,0 +1,4 @@
+source	target	value
+Coal	Power	120
+Gas	Power	80
+Power	Homes	200

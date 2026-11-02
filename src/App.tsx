@@ -12,6 +12,9 @@ import { groupIssuesByRow } from './ui/issues';
 import { Preview } from './ui/Preview/Preview';
 import { SettingsPanel } from './ui/SettingsPanel/SettingsPanel';
 import { TopBar } from './ui/TopBar/TopBar';
+import { ExportDialog } from './ui/ExportDialog/ExportDialog';
+import { ImportDialog } from './ui/ImportDialog/ImportDialog';
+import { Toast } from './ui/Toast/Toast';
 
 /** 이보다 좁은 화면에서는 이 폭으로 그려 축소해 보인다(레이블 겹침 방지). */
 const MIN_CHART_WIDTH = 560;
@@ -37,13 +40,43 @@ export function App() {
   );
   const issuesByRow = useMemo(() => groupIssuesByRow(graph.issues), [graph.issues]);
 
+  const [importOpen, setImportOpen] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
   useUndoShortcuts();
 
   return (
     <div className="app">
-      <TopBar />
+      <TopBar
+        onImport={() => {
+          setDroppedFile(null);
+          setImportOpen(true);
+        }}
+        onExport={() => setExportOpen(true)}
+      />
       <main className="workspace">
-        <section className="panel panel--data" aria-labelledby="panel-data">
+        <section
+          className={dragOver ? 'panel panel--data panel--drop' : 'panel panel--data'}
+          aria-labelledby="panel-data"
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+          }}
+          onDrop={(e) => {
+            const file = e.dataTransfer.files[0];
+            setDragOver(false);
+            if (!file) return;
+            e.preventDefault();
+            setDroppedFile(file);
+            setImportOpen(true);
+          }}
+        >
           <h2 id="panel-data">{ko.panel.data}</h2>
           <DataTable issuesByRow={issuesByRow} unit={doc.meta.unit} />
           <IssueSummary issues={graph.issues} rows={settled.rows} />
@@ -64,6 +97,17 @@ export function App() {
           <SettingsPanel model={model} />
         </section>
       </main>
+      {importOpen && (
+        <ImportDialog initialFile={droppedFile} onClose={() => setImportOpen(false)} />
+      )}
+      {exportOpen && (
+        <ExportDialog
+          onClose={() => setExportOpen(false)}
+          drawable={graph.drawable}
+          previewWidth={chartWidth}
+        />
+      )}
+      <Toast />
     </div>
   );
 }

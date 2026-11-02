@@ -98,4 +98,34 @@ describe('editor store', () => {
     s().undo();
     expect(s().doc.settings.nodePadding).toBe(before);
   });
+
+  it('CSV 가져오기: 대체·추가·단위·행 수 제한·실행 취소', () => {
+    const { s, row } = setup();
+    const r = (v: string) => createRow({ source: 'X', target: 'Y', value: v });
+
+    s().importRows([r('1'), r('2')], 'replace', '명');
+    expect(s().doc.rows.map((x) => x.value)).toEqual(['1', '2']);
+    expect(s().doc.meta.unit).toBe('명');
+
+    // 추가: 단위가 이미 있으면 바꾸지 않는다
+    s().importRows([r('3')], 'append', '원');
+    expect(s().doc.rows.map((x) => x.value)).toEqual(['1', '2', '3']);
+    expect(s().doc.meta.unit).toBe('명');
+
+    const many = Array.from({ length: 600 }, (_, i) => r(String(i + 1)));
+    expect(s().importRows(many, 'append').dropped).toBe(103);
+    expect(s().doc.rows).toHaveLength(500);
+
+    s().undo();
+    s().undo();
+    s().undo();
+    expect(s().doc.rows.map((x) => x.id)).toEqual([row.id]);
+  });
+
+  it('추가할 때 빈 행은 버린다', () => {
+    const { s } = setup();
+    s().addRow();
+    s().importRows([createRow({ source: 'A', target: 'B', value: '1' })], 'append');
+    expect(s().doc.rows).toHaveLength(2);
+  });
 });

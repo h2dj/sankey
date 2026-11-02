@@ -6,7 +6,12 @@ import styles from './TopBar.module.css';
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = isMac ? '⌘' : 'Ctrl+';
 
-export function TopBar() {
+interface Props {
+  onImport(): void;
+  onExport(): void;
+}
+
+export function TopBar({ onImport, onExport }: Props) {
   const title = useEditor((s) => s.doc.meta.title);
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
@@ -29,6 +34,12 @@ export function TopBar() {
           title={`다시 실행 (${MOD}Shift+Z)`}
         >
           다시 실행
+        </button>
+        <button type="button" onClick={onImport}>
+          CSV 가져오기
+        </button>
+        <button type="button" className="primary" onClick={onExport}>
+          내려받기
         </button>
         <label className={styles.sample}>
           <span>예시 불러오기</span>

@@ -1,9 +1,9 @@
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { LIMITS } from '../core/config';
+import { LIMITS, createRow } from '../core/config';
 import { applyPaste, insertRow, removeRow, updateCell } from '../core/rows';
 import { DEFAULT_SAMPLE_ID, loadSample } from '../core/samples';
-import type { DiagramDoc, DiagramMeta, RowField, Settings } from '../core/types';
+import type { DiagramDoc, DiagramMeta, Row, RowField, Settings } from '../core/types';
 
 const HISTORY_LIMIT = 100;
 /** 같은 셀을 연달아 입력하면 이 시간 안의 변경은 실행 취소 한 번으로 묶는다. */
@@ -26,6 +26,12 @@ export interface EditorActions {
   paste(startRowId: string, startField: RowField, matrix: string[][]): { droppedRows: number };
   setMeta(patch: Partial<DiagramMeta>): void;
   setSettings(patch: Partial<Settings>): void;
+  /**
+   * CSV에서 가져온 행을 넣는다. replace는 표를 바꾸고, append는 뒤에 붙인다.
+   * unit이 있으면 replace일 때 또는 현재 단위가 비어 있을 때 단위도 바꾼다.
+   * 행 수 제한으로 버린 행 수를 돌려준다. 실행 취소 한 번으로 되돌린다.
+   */
+  importRows(rows: Row[], mode: 'replace' | 'append', unit?: string): { dropped: number };
   /** 예시 불러오기 등 문서 전체 교체. 실행 취소로 되돌릴 수 있다. */
   replaceDoc(doc: DiagramDoc): void;
   undo(): void;
@@ -98,6 +104,21 @@ export function createEditorStore(
         commit({ ...doc, settings: { ...doc.settings, ...patch } }, `settings:${keys}`);
       },
 
+      importRows(rows, mode, unit) {
+        const { doc } = get();
+        const kept = mode === 'append' ? doc.rows.filter((r) => !isBlank(r)) : [];
+        const room = Math.max(0, LIMITS.maxRows - kept.length);
+        const added = rows.slice(0, room);
+        const nextRows = [...kept, ...added];
+        const setUnit = unit && (mode === 'replace' || !doc.meta.unit.trim());
+        commit({
+          ...doc,
+          rows: nextRows.length > 0 ? nextRows : [createRow()],
+          meta: setUnit ? { ...doc.meta, unit } : doc.meta,
+        });
+        return { dropped: rows.length - added.length };
+      },
+
       replaceDoc(next) {
         commit(next);
       },
@@ -123,4 +144,8 @@ export const editorStore = createEditorStore();
 
 export function useEditor<T>(selector: (s: EditorStore) => T): T {
   return useStore(editorStore, selector);
+}
+
+function isBlank(r: Row): boolean {
+  return [r.source, r.target, r.value, r.group ?? '', r.memo ?? ''].every((v) => v.trim() === '');
 }

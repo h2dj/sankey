@@ -68,8 +68,8 @@ export function Slider(props: {
 export function Radio<T extends string>(props: {
   legend: string;
   value: T;
-  options: readonly (readonly [T, string])[];
-  onChange(v: T): void;
+  options: readonly (readonly [NoInfer<T>, string])[];
+  onChange(v: NoInfer<T>): void;
 }) {
   const name = useId();
   return (
@@ -94,8 +94,8 @@ export function Radio<T extends string>(props: {
 export function Select<T extends string>(props: {
   label: string;
   value: T;
-  options: readonly (readonly [T, string])[];
-  onChange(v: T): void;
+  options: readonly (readonly [NoInfer<T>, string])[];
+  onChange(v: NoInfer<T>): void;
 }) {
   const id = useId();
   return (
