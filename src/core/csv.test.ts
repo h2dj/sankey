@@ -9,6 +9,7 @@ import {
   parseCsv,
   recordsToRows,
   serializeCsv,
+  CSV_BOM,
   type ParsedCsv,
 } from './csv';
 import { SAMPLES, loadSample } from './samples';
@@ -37,7 +38,7 @@ describe('parseCsv: 인코딩', () => {
       hasHeader: true,
       columnCount: 5,
     });
-    expect(csv.mapping).toEqual({ source: 0, target: 1, value: 2, group: 3, memo: 4 });
+    expect(csv.mapping).toMatchObject({ source: 0, target: 1, value: 2, group: 3, memo: 4 });
     expect(plain(rowsOf(csv))[2]).toEqual(['교육', '강사비', '25', '세부 항목', '외부 강사 포함']);
   });
 
@@ -82,7 +83,15 @@ describe('parseCsv: 구분자·머리글', () => {
   it('머리글 없음: 첫 줄도 데이터, 앞 열부터 차례로', () => {
     const csv = ok(fixture('no-header.csv'));
     expect(csv.hasHeader).toBe(false);
-    expect(csv.mapping).toEqual({ source: 0, target: 1, value: 2, group: null, memo: null });
+    expect(csv.mapping).toEqual({
+      source: 0,
+      target: 1,
+      value: 2,
+      group: null,
+      memo: null,
+      sourcePeriod: null,
+      targetPeriod: null,
+    });
     expect(rowsOf(csv)).toHaveLength(3);
   });
 
@@ -97,7 +106,7 @@ describe('parseCsv: 구분자·머리글', () => {
   });
 
   it('열 이름이 달라도 아는 별칭이면 매핑한다', () => {
-    expect(guessMapping(['메모', '값 (명)', '도착지', '출발지', '분류'], 5)).toEqual({
+    expect(guessMapping(['메모', '값 (명)', '도착지', '출발지', '분류'], 5)).toMatchObject({
       source: 3,
       target: 2,
       value: 1,
@@ -107,7 +116,7 @@ describe('parseCsv: 구분자·머리글', () => {
   });
 
   it('모르는 열 이름이면 남은 앞 열로 채운다', () => {
-    expect(guessMapping(['가', '나', '다', '라'], 4)).toEqual({
+    expect(guessMapping(['가', '나', '다', '라'], 4)).toMatchObject({
       source: 0,
       target: 1,
       value: 2,
@@ -143,13 +152,48 @@ describe('parseCsv: 오류 안내', () => {
   });
 
   it('checkMapping', () => {
-    expect(checkMapping({ source: 0, target: 1, value: 2, group: null, memo: null }, 3)).toBeNull();
-    expect(checkMapping({ source: 0, target: 0, value: 2, group: null, memo: null }, 3)).toContain(
-      '서로 다른',
-    );
-    expect(checkMapping({ source: 0, target: 1, value: 5, group: null, memo: null }, 3)).toContain(
-      '모두',
-    );
+    expect(
+      checkMapping(
+        {
+          source: 0,
+          target: 1,
+          value: 2,
+          group: null,
+          memo: null,
+          sourcePeriod: null,
+          targetPeriod: null,
+        },
+        3,
+      ),
+    ).toBeNull();
+    expect(
+      checkMapping(
+        {
+          source: 0,
+          target: 0,
+          value: 2,
+          group: null,
+          memo: null,
+          sourcePeriod: null,
+          targetPeriod: null,
+        },
+        3,
+      ),
+    ).toContain('서로 다른');
+    expect(
+      checkMapping(
+        {
+          source: 0,
+          target: 1,
+          value: 5,
+          group: null,
+          memo: null,
+          sourcePeriod: null,
+          targetPeriod: null,
+        },
+        3,
+      ),
+    ).toContain('모두');
   });
 });
 
@@ -213,5 +257,61 @@ describe('looksLikeHeaderRow', () => {
     [['값'], false],
   ])('%j → %s', (cells, expected) => {
     expect(looksLikeHeaderRow(cells)).toBe(expected);
+  });
+});
+
+describe('시기 열', () => {
+  const doc = () => {
+    const d = loadSample('budget');
+    d.settings.timeline = {
+      enabled: true,
+      periods: [
+        { id: 'a', label: '2025' },
+        { id: 'b', label: '2026' },
+      ],
+      nodePeriods: { '전체 예산': 'a', 교육: 'b', 운영: 'b' },
+      showBands: true,
+      showTotals: false,
+    };
+    return d;
+  };
+
+  it('시기를 정한 노드가 있으면 출발·도착 시기 열을 내보낸다', () => {
+    const d = doc();
+    const out = serializeCsv(d.rows, d.meta.unit, d.settings.timeline);
+    const lines = out.replace(CSV_BOM, '').trim().split('\r\n');
+    expect(lines[0]).toBe('출발 노드,도착 노드,값 (백만 원),색상 그룹,메모,출발 시기,도착 시기');
+    expect(lines[1]).toBe('전체 예산,교육,40,사업 분야,,2025,2026');
+    expect(lines[5]).toBe('교육,강사비,25,세부 항목,외부 강사 포함,2026,');
+  });
+
+  it('시기 모드가 꺼져 있거나 지정이 없으면 열을 더하지 않는다', () => {
+    const d = doc();
+    expect(serializeCsv(d.rows, '', { ...d.settings.timeline, enabled: false })).not.toContain(
+      '출발 시기',
+    );
+    expect(serializeCsv(d.rows, '', { ...d.settings.timeline, nodePeriods: {} })).not.toContain(
+      '출발 시기',
+    );
+  });
+
+  it('가져올 때 시기 열을 알아보고 노드별 시기를 모은다(왕복)', () => {
+    const d = doc();
+    const csv = ok(enc(serializeCsv(d.rows, d.meta.unit, d.settings.timeline)));
+    expect(csv.mapping).toMatchObject({ sourcePeriod: 5, targetPeriod: 6 });
+    const res = recordsToRows(csv, csv.mapping, true);
+    expect(Object.fromEntries(res.nodePeriods)).toEqual({
+      '전체 예산': '2025',
+      교육: '2026',
+      운영: '2026',
+    });
+    expect(res.periodConflicts).toBe(0);
+  });
+
+  it('같은 노드에 다른 시기가 적히면 처음 값을 쓰고 개수를 센다', () => {
+    const csv = ok(enc('출발,도착,값,출발 시기,도착 시기\nA,B,1,2020,2021\nB,C,1,2022,2023\n'));
+    const res = recordsToRows(csv, csv.mapping, true);
+    expect(res.nodePeriods.get('B')).toBe('2021');
+    expect(res.periodConflicts).toBe(1);
   });
 });

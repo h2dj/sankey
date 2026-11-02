@@ -13,6 +13,8 @@ interface SampleDef {
   description: string;
   unit: string;
   rows: SampleRow[];
+  /** 시기별 배치 예시: 시기 이름(순서대로)과 노드 → 시기 이름 */
+  timeline?: { periods: string[]; nodes: Record<string, string> };
 }
 
 const DEFS: readonly SampleDef[] = [
@@ -86,6 +88,40 @@ const DEFS: readonly SampleDef[] = [
       ['40대 이상', '자가용', 70, '출근 수단'],
     ],
   },
+  {
+    id: 'history',
+    name: '시기별 단체 흐름',
+    title: '시민사회 IT 활동가의 흐름',
+    description:
+      '활동가들이 시기마다 어느 모임·단체로 옮겨 갔는지(가상 수치). 시기별 배치를 켠 예시입니다.',
+    unit: '명',
+    rows: [
+      ['진보네트워크', '정보통신활동가네트워크', 3],
+      ['노동네트워크', '정보통신활동가네트워크', 2],
+      ['시민단체 활동가', '정보통신활동가네트워크', 4],
+      ['정보통신활동가네트워크', 'IT단체설립모임', 6],
+      ['정보통신활동가네트워크', '오픈소스운동', 3],
+      ['희망제작소', 'IT단체설립모임', 3, undefined, '시기를 정하지 않음(자동)'],
+      ['IT단체설립모임', '비영리IT지원센터', 9],
+      ['오픈소스운동', '비영리IT지원센터', 3],
+      ['비영리IT지원센터', '공동체IT', 8],
+      ['비영리IT지원센터', '지역 IT교실', 4],
+    ],
+    timeline: {
+      periods: ['2000', '2005', '2010', '2015', '2020'],
+      nodes: {
+        진보네트워크: '2000',
+        노동네트워크: '2000',
+        '시민단체 활동가': '2000',
+        정보통신활동가네트워크: '2005',
+        IT단체설립모임: '2010',
+        오픈소스운동: '2010',
+        비영리IT지원센터: '2015',
+        공동체IT: '2020',
+        '지역 IT교실': '2020',
+      },
+    },
+  },
 ];
 
 export interface SampleInfo {
@@ -101,7 +137,7 @@ export const DEFAULT_SAMPLE_ID = 'budget';
 export function loadSample(id: string): DiagramDoc {
   const def = DEFS.find((d) => d.id === id);
   if (!def) throw new Error(`Unknown sample: ${id}`);
-  return createDoc({
+  const doc = createDoc({
     meta: { title: def.title, description: def.description, unit: def.unit },
     rows: def.rows.map(([source, target, value, group, memo]) =>
       createRow({
@@ -113,4 +149,18 @@ export function loadSample(id: string): DiagramDoc {
       }),
     ),
   });
+  if (def.timeline) {
+    const periods = def.timeline.periods.map((label, i) => ({ id: `${def.id}-${i}`, label }));
+    const idOf = new Map(periods.map((p) => [p.label, p.id]));
+    doc.settings.timeline = {
+      ...doc.settings.timeline,
+      enabled: true,
+      periods,
+      nodePeriods: Object.fromEntries(
+        Object.entries(def.timeline.nodes).map(([node, label]) => [node, idOf.get(label)!]),
+      ),
+      showTotals: true,
+    };
+  }
+  return doc;
 }

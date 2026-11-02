@@ -40,7 +40,21 @@ type State =
       mapping: CsvMapping;
     };
 
-const FIELDS = ['source', 'target', 'value', 'group', 'memo'] as const;
+const FIELDS = [
+  'source',
+  'target',
+  'value',
+  'group',
+  'memo',
+  'sourcePeriod',
+  'targetPeriod',
+] as const;
+const REQUIRED = new Set<string>(['source', 'target', 'value']);
+const FIELD_LABEL: Record<(typeof FIELDS)[number], string> = {
+  ...ko.columns,
+  sourcePeriod: '출발 시기',
+  targetPeriod: '도착 시기',
+};
 
 async function readCsvFile(file: File): Promise<State> {
   const res = parseCsv(new Uint8Array(await file.arrayBuffer()));
@@ -88,19 +102,28 @@ export function ImportDialog({ initialFile, onClose }: Props) {
   const mapped = useMemo(() => {
     if (state.step !== 'map') return null;
     const problem = checkMapping(state.mapping, state.csv.columnCount);
-    const { rows, dropped } = recordsToRows(state.csv, state.mapping, state.hasHeader, Infinity);
+    const { rows, dropped, nodePeriods, periodConflicts } = recordsToRows(
+      state.csv,
+      state.mapping,
+      state.hasHeader,
+      Infinity,
+    );
     const { issues } = validate(rows.slice(0, LIMITS.maxRows));
     return {
       problem,
       rows,
       dropped,
+      nodePeriods,
+      periodConflicts,
       errors: issues.filter((i) => i.level === 'error').length,
     };
   }, [state]);
 
   const confirm = () => {
     if (state.step !== 'map' || !mapped || mapped.problem) return;
-    const { dropped } = editorStore.getState().importRows(mapped.rows, mode, state.csv.unit);
+    const { dropped, periodsAssigned } = editorStore
+      .getState()
+      .importRows(mapped.rows, mode, state.csv.unit, mapped.nodePeriods);
     const imported = mapped.rows.length - dropped;
     track('import_ok', {
       rows: imported,
@@ -112,6 +135,9 @@ export function ImportDialog({ initialFile, onClose }: Props) {
     announce(
       `${state.fileName}에서 ${imported}행을 ${mode === 'replace' ? '가져왔습니다' : '추가했습니다'}.` +
         (dropped > 0 ? ` 최대 ${LIMITS.maxRows}행을 넘는 ${dropped}행은 제외했습니다.` : '') +
+        (periodsAssigned > 0
+          ? ` 노드 ${periodsAssigned}개의 시기를 정했습니다(시기별 배치 켬).`
+          : '') +
         ' Ctrl+Z로 되돌릴 수 있습니다.',
     );
     close();
@@ -220,15 +246,16 @@ export function ImportDialog({ initialFile, onClose }: Props) {
           <fieldset className={styles.mapping}>
             <legend>열 맞추기</legend>
             {FIELDS.map((field) => {
-              const optional = field === 'group' || field === 'memo';
+              const optional = !REQUIRED.has(field);
               const value = state.mapping[field];
               return (
                 <label key={field}>
                   <span>
-                    {ko.columns[field]}
+                    {FIELD_LABEL[field]}
                     {!optional && <span className={styles.required}> *</span>}
                   </span>
                   <select
+                    aria-label={FIELD_LABEL[field]}
                     value={value === null ? '' : String(value)}
                     onChange={(e) =>
                       setState({
@@ -263,7 +290,7 @@ export function ImportDialog({ initialFile, onClose }: Props) {
                   <caption>미리보기(처음 5행)</caption>
                   <thead>
                     <tr>
-                      {FIELDS.map((f) => (
+                      {(['source', 'target', 'value', 'group', 'memo'] as const).map((f) => (
                         <th key={f} scope="col">
                           {ko.columns[f]}
                         </th>
@@ -287,6 +314,10 @@ export function ImportDialog({ initialFile, onClose }: Props) {
                 {mapped.rows.length}행을 읽었습니다.
                 {mapped.rows.length > LIMITS.maxRows &&
                   ` 최대 ${LIMITS.maxRows}행까지만 가져옵니다.`}
+                {mapped.nodePeriods.size > 0 &&
+                  ` 노드 ${mapped.nodePeriods.size}개의 시기를 읽었습니다.`}
+                {mapped.periodConflicts > 0 &&
+                  ` 같은 노드에 다른 시기가 적힌 곳 ${mapped.periodConflicts}건은 처음 값을 씁니다.`}
                 {mapped.errors > 0 &&
                   ` 가져온 뒤 고칠 입력 오류가 ${mapped.errors}건 있습니다(표에 표시됩니다).`}
               </p>

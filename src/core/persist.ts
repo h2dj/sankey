@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, SCHEMA_VERSION, createRow } from './config';
-import type { DiagramDoc, Row, Settings } from './types';
+import type { DiagramDoc, Period, Row, Settings, TimelineSettings } from './types';
 
 /**
  * 브라우저 임시 저장(F-07). 저장 위치는 이 기기·이 브라우저의 localStorage뿐이고 서버로 보내지 않는다.
@@ -142,7 +142,9 @@ function mergeSettings(saved: Partial<Settings>): Settings {
                 ([, c]) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c),
               ),
             )
-          : { ...def, ...v };
+          : key === 'timeline'
+            ? sanitizeTimeline(v as Record<string, unknown>)
+            : { ...def, ...v };
     } else {
       out[key] = v;
     }
@@ -152,4 +154,34 @@ function mergeSettings(saved: Partial<Settings>): Settings {
 
 function isObject(v: unknown): v is object {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/** 시기 설정: 시기는 {id, label} 문자열만, 노드 지정은 있는 시기 id만 남긴다. */
+function sanitizeTimeline(v: Record<string, unknown>): TimelineSettings {
+  const def = DEFAULT_SETTINGS.timeline;
+  const periods: Period[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(v.periods)) {
+    for (const p of v.periods) {
+      if (!isObject(p)) continue;
+      const { id, label } = p as Record<string, unknown>;
+      if (typeof id !== 'string' || !id || typeof label !== 'string' || seen.has(id)) continue;
+      seen.add(id);
+      periods.push({ id, label });
+    }
+  }
+  const nodePeriods = isObject(v.nodePeriods)
+    ? Object.fromEntries(
+        Object.entries(v.nodePeriods).filter(([, id]) => typeof id === 'string' && seen.has(id)),
+      )
+    : {};
+  const bool = (k: keyof TimelineSettings) =>
+    typeof v[k] === 'boolean' ? (v[k] as boolean) : (def[k] as boolean);
+  return {
+    enabled: bool('enabled'),
+    periods,
+    nodePeriods: nodePeriods as Record<string, string>,
+    showBands: bool('showBands'),
+    showTotals: bool('showTotals'),
+  };
 }

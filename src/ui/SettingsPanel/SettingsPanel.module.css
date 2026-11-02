@@ -161,3 +161,48 @@
   margin: 0;
   color: var(--color-text-muted);
 }
+
+.periodList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding-left: 1.6em;
+}
+
+.periodList li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.periodList input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.periodList button {
+  padding: 2px 7px;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nodeColors select {
+  max-width: 50%;
+  font-size: 0.8125rem;
+  padding: 2px 4px;
+}
+
+/* fieldset은 기본으로 내용 폭보다 좁아지지 않아(min-inline-size: min-content) 패널 밖으로 넘친다 */
+.radio,
+.nodeColors {
+  min-width: 0;
+}

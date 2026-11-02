@@ -35,7 +35,9 @@ const BACKGROUND = '#ffffff';
 export async function exportDiagram(doc: DiagramDoc, opts: ExportOptions): Promise<ExportResult> {
   if (opts.format === 'csv') {
     return {
-      blob: new Blob([serializeCsv(doc.rows, doc.meta.unit)], { type: 'text/csv;charset=utf-8' }),
+      blob: new Blob([serializeCsv(doc.rows, doc.meta.unit, doc.settings.timeline)], {
+        type: 'text/csv;charset=utf-8',
+      }),
       filename: safeFilename(opts.filename, 'csv'),
     };
   }

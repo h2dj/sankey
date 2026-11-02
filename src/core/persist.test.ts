@@ -109,4 +109,42 @@ describe('persist', () => {
     clearSaved(storage);
     expect(data.size).toBe(0);
   });
+
+  it('시기 설정을 검사해 불러온다', () => {
+    const raw = JSON.stringify({
+      schemaVersion: 1,
+      doc: {
+        meta: {},
+        rows: [],
+        settings: {
+          timeline: {
+            enabled: true,
+            periods: [
+              { id: 'a', label: '2018' },
+              { id: 'a', label: '중복' },
+              { label: 'id 없음' },
+              3,
+            ],
+            nodePeriods: { X: 'a', Y: 'missing', Z: 5 },
+            showTotals: 'yes',
+          },
+        },
+      },
+    });
+    const res = loadDoc(memoryStorage({ [STORAGE_KEY]: raw }).storage);
+    if (res.status !== 'ok') throw new Error(res.status);
+    expect(res.doc.settings.timeline).toEqual({
+      enabled: true,
+      periods: [{ id: 'a', label: '2018' }],
+      nodePeriods: { X: 'a' },
+      showBands: true,
+      showTotals: false,
+    });
+  });
+
+  it('예전 저장값(시기 설정 없음)은 시기 모드 꺼짐', () => {
+    const raw = JSON.stringify({ schemaVersion: 1, doc: { meta: {}, rows: [], settings: {} } });
+    const res = loadDoc(memoryStorage({ [STORAGE_KEY]: raw }).storage);
+    expect(res.status === 'ok' && res.doc.settings.timeline).toEqual(DEFAULT_SETTINGS.timeline);
+  });
 });

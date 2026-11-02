@@ -2,7 +2,16 @@ import { useId, type FocusEvent, type KeyboardEvent, type MouseEvent } from 'rea
 import type { ChartModel } from '../../core/chartModel';
 import { TEXT_DARK } from '../../core/palette';
 import type { Settings } from '../../core/types';
-import { linkAriaLabel, linkKey, nodeAriaLabel, nodeKey, type ItemKey } from './items';
+import {
+  BAND_FILL,
+  BAND_LINE,
+  PERIOD_MUTED,
+  linkAriaLabel,
+  linkKey,
+  nodeAriaLabel,
+  nodeKey,
+  type ItemKey,
+} from './items';
 
 /** 화면 미리보기에서만 쓰는 상호작용. 내보내기에서는 넘기지 않는다. */
 export interface ChartInteraction {
@@ -16,6 +25,9 @@ export interface ChartInteraction {
   onBlurItem(): void;
   onActivate(key: ItemKey): void;
   onKeyDown(key: ItemKey, e: KeyboardEvent<SVGElement>): void;
+  /** 시기 머리글을 눌러 고른 시기 */
+  activePeriodId: string | null;
+  onPeriodActivate(periodId: string): void;
 }
 
 interface Props {
@@ -89,6 +101,8 @@ export function SankeyChart({ model, title, settings, interaction }: Props) {
         </defs>
       )}
 
+      {model.showBands && <PeriodBands model={model} />}
+
       <g className="links" fill="none">
         {model.links.map((l, i) => {
           const opacity = !hi
@@ -159,6 +173,121 @@ export function SankeyChart({ model, title, settings, interaction }: Props) {
           </text>
         ))}
       </g>
+
+      {model.periods.length > 0 && (
+        <PeriodHeaders model={model} fontSize={settings.fontSize} interaction={interaction} />
+      )}
     </svg>
+  );
+}
+
+/** 시기 띠: 번갈아 칠하고 경계에 점선 */
+function PeriodBands({ model }: { model: ChartModel }) {
+  return (
+    <g className="period-bands" aria-hidden="true" pointerEvents="none">
+      {model.periods
+        .filter((p) => p.shaded)
+        .map((p) => (
+          <rect
+            key={p.id}
+            x={p.x0}
+            y={0}
+            width={p.x1 - p.x0}
+            height={model.height}
+            fill={BAND_FILL}
+          />
+        ))}
+      {model.periods
+        .filter((p) => p.x0 > 0.5)
+        .map((p) => (
+          <line
+            key={p.id}
+            x1={p.x0}
+            x2={p.x0}
+            y1={0}
+            y2={model.height}
+            stroke={BAND_LINE}
+            strokeDasharray="4 4"
+          />
+        ))}
+    </g>
+  );
+}
+
+/** 시기 머리글. 미리보기에서는 누르면 그 시기의 노드·흐름을 강조하는 단추가 된다. */
+function PeriodHeaders({
+  model,
+  fontSize,
+  interaction,
+}: {
+  model: ChartModel;
+  fontSize: number;
+  interaction: ChartInteraction | undefined;
+}) {
+  return (
+    <g className="period-headers">
+      {model.periods.map((p) => {
+        const active = interaction?.activePeriodId === p.id;
+        // 보이는 글자(시기 이름, 합계)로 시작해야 음성 명령·스크린리더 이름이 일치한다.
+        const label = `${[p.label, p.totalsText].filter(Boolean).join(' ')} (시기, 노드 ${p.nodeIds.length}개)`;
+        const content = (
+          <>
+            <rect
+              x={p.x0 + 2}
+              y={1}
+              width={Math.max(0, p.x1 - p.x0 - 4)}
+              height={model.headerHeight - 4}
+              rx={4}
+              fill={active ? '#DDF4FF' : 'transparent'}
+              stroke={active ? '#2F6FB3' : 'none'}
+            />
+            <text
+              x={p.cx}
+              y={p.labelY}
+              textAnchor="middle"
+              fontWeight={600}
+              fill={TEXT_DARK}
+              data-period-label={p.id}
+            >
+              {p.label}
+              {/* 합계와 이어 읽힐 때 띄어 쓰도록(접근 이름 = 보이는 글자) */}
+              {p.totalsText ? ' ' : ''}
+            </text>
+            {p.totalsText && (
+              <text
+                x={p.cx}
+                y={p.totalsY}
+                textAnchor="middle"
+                fontSize={fontSize * 0.85}
+                fill={PERIOD_MUTED}
+              >
+                {p.totalsText}
+              </text>
+            )}
+          </>
+        );
+        if (!interaction) return <g key={p.id}>{content}</g>;
+        return (
+          <g
+            key={p.id}
+            role="button"
+            tabIndex={0}
+            aria-pressed={active}
+            aria-label={label}
+            data-period-id={p.id}
+            className="period-header"
+            onClick={() => interaction.onPeriodActivate(p.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                interaction.onPeriodActivate(p.id);
+              }
+            }}
+          >
+            {content}
+          </g>
+        );
+      })}
+    </g>
   );
 }

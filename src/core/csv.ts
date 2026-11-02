@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 import { LIMITS, createRow } from './config';
-import { parseValue } from './normalize';
-import type { Row } from './types';
+import { normalizeName, parseValue } from './normalize';
+import type { Row, TimelineSettings } from './types';
 
 /** 이보다 큰 파일은 읽지 않는다(500행 CSV는 보통 수십 KB). */
 export const MAX_CSV_BYTES = 5 * 1024 * 1024;
@@ -30,6 +30,9 @@ export interface CsvMapping {
   value: number;
   group: number | null;
   memo: number | null;
+  /** 시기 모드: 출발·도착 노드의 시기 이름 열(선택) */
+  sourcePeriod: number | null;
+  targetPeriod: number | null;
 }
 
 export interface ParsedCsv {
@@ -120,6 +123,8 @@ const ALIASES: Record<keyof CsvMapping, readonly string[]> = {
   value: ['값', '흐름값', '양', '수량', '금액', 'value', 'amount', 'weight', 'count', 'flow'],
   group: ['색상그룹', '그룹', '분류', 'group', 'category', 'color', 'colorgroup'],
   memo: ['메모', '비고', 'memo', 'note', 'notes', 'comment'],
+  sourcePeriod: ['출발시기', '출발기간', '시작시기', 'sourceperiod', 'fromperiod', 'sourcetime'],
+  targetPeriod: ['도착시기', '도착기간', 'targetperiod', 'toperiod', 'targettime'],
 };
 
 /** 비교용 열 이름: 괄호 안 내용(단위)을 떼고 공백·밑줄을 지운 소문자 */
@@ -185,7 +190,15 @@ export function guessMapping(header: readonly string[] | null, columnCount: numb
   // 머리글이 없으면 4·5번째 열을 그룹·메모로 본다(내보낸 CSV와 같은 순서).
   const group = found.group ?? (!header && columnCount > 3 ? 3 : null);
   const memo = found.memo ?? (!header && columnCount > 4 ? 4 : null);
-  return { source, target, value, group, memo };
+  return {
+    source,
+    target,
+    value,
+    group,
+    memo,
+    sourcePeriod: found.sourcePeriod ?? null,
+    targetPeriod: found.targetPeriod ?? null,
+  };
 }
 
 /** 필수 열이 모두 있고 서로 다른지 확인. 문제가 있으면 안내 문장 */
@@ -261,6 +274,10 @@ export interface RecordsToRowsResult {
   rows: Row[];
   /** 행 수 제한으로 버린 행 */
   dropped: number;
+  /** 시기 열에서 읽은 노드(정규화 이름) → 시기 이름. 처음 나온 값을 쓴다 */
+  nodePeriods: Map<string, string>;
+  /** 같은 노드에 서로 다른 시기가 적힌 경우의 수(처음 값을 썼음) */
+  periodConflicts: number;
 }
 
 export function recordsToRows(
@@ -273,6 +290,15 @@ export function recordsToRows(
   const cell = (r: string[], i: number | null) => (i === null ? '' : (r[i] ?? '').trim());
   const rows: Row[] = [];
   let dropped = 0;
+  const nodePeriods = new Map<string, string>();
+  let periodConflicts = 0;
+  const notePeriod = (node: string, label: string) => {
+    const id = normalizeName(node);
+    if (!id || !label) return;
+    const prev = nodePeriods.get(id);
+    if (prev === undefined) nodePeriods.set(id, label);
+    else if (prev !== label) periodConflicts += 1;
+  };
   for (const r of data) {
     const source = cell(r, mapping.source);
     const target = cell(r, mapping.target);
@@ -285,8 +311,10 @@ export function recordsToRows(
       continue;
     }
     rows.push(createRow({ source, target, value, ...(group && { group }), ...(memo && { memo }) }));
+    notePeriod(source, cell(r, mapping.sourcePeriod));
+    notePeriod(target, cell(r, mapping.targetPeriod));
   }
-  return { rows, dropped };
+  return { rows, dropped, nodePeriods, periodConflicts };
 }
 
 // ─── 4. 내보내기 ────────────────────────────────────────────────────────────
@@ -305,18 +333,26 @@ function unescapeCell(v: string): string {
 }
 
 /** 표 데이터 → CSV(UTF-8 BOM, CRLF). 빈 행은 뺀다. 단위가 있으면 값 열 이름에 붙인다. */
-export function serializeCsv(rows: readonly Row[], unit = ''): string {
+export function serializeCsv(rows: readonly Row[], unit = '', timeline?: TimelineSettings): string {
+  // 시기 모드에서 노드에 시기를 정해 두었으면 출발·도착 시기 열을 더한다(다시 불러오면 복원).
+  const periodLabel = new Map(timeline?.periods.map((p) => [p.id, p.label]));
+  const withPeriods =
+    !!timeline?.enabled && Object.values(timeline.nodePeriods).some((id) => periodLabel.has(id));
+  const periodOf = (node: string) =>
+    periodLabel.get(timeline!.nodePeriods[normalizeName(node)] ?? '') ?? '';
   const header = [
     '출발 노드',
     '도착 노드',
     unit.trim() ? `값 (${unit.trim()})` : '값',
     '색상 그룹',
     '메모',
+    ...(withPeriods ? ['출발 시기', '도착 시기'] : []),
   ];
   const lines = [header.map(escapeCell).join(',')];
   for (const r of rows) {
     const cells = [r.source, r.target, r.value, r.group ?? '', r.memo ?? ''];
     if (cells.every((c) => c.trim() === '')) continue;
+    if (withPeriods) cells.push(periodOf(r.source), periodOf(r.target));
     lines.push(cells.map(escapeCell).join(','));
   }
   return CSV_BOM + lines.join('\r\n') + '\r\n';

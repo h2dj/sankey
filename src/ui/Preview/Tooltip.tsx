@@ -1,4 +1,4 @@
-import type { ChartLink, ChartNode } from '../../core/chartModel';
+import type { ChartLink, ChartNode, ChartPeriod } from '../../core/chartModel';
 import type { ItemKey } from './items';
 import styles from './Preview.module.css';
 
@@ -16,6 +16,7 @@ interface Props {
   link?: ChartLink | undefined;
   node?: ChartNode | undefined;
   rowNumber: Map<string, number>;
+  periods?: readonly ChartPeriod[];
 }
 
 function rowList(rowIds: readonly string[], rowNumber: Map<string, number>): string {
@@ -26,7 +27,7 @@ function rowList(rowIds: readonly string[], rowNumber: Map<string, number>): str
 }
 
 /** 마우스를 올리거나 키보드 초점을 둔 흐름·노드의 정보. */
-export function Tooltip({ state, link, node, rowNumber }: Props) {
+export function Tooltip({ state, link, node, rowNumber, periods = [] }: Props) {
   if (!link && !node) return null;
   return (
     <div
@@ -51,6 +52,12 @@ export function Tooltip({ state, link, node, rowNumber }: Props) {
         <>
           <strong>{node.label}</strong>
           <span className={styles.tipValue}>{node.valueText}</span>
+          {node.periodIndex !== undefined && periods[node.periodIndex] && (
+            <span>
+              시기: {periods[node.periodIndex]!.label}
+              {node.periodInferred && ' (자동으로 놓음)'}
+            </span>
+          )}
           {node.inflow > 0 && node.outflow > 0 && (
             <span>
               들어옴 {fmtPlain(node.inflow)} · 나감 {fmtPlain(node.outflow)}

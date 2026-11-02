@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   nodeColorOverrides: {},
   duplicateMode: 'merge',
   numberFormat: { decimals: 'auto', thousands: true },
+  timeline: { enabled: false, periods: [], nodePeriods: {}, showBands: true, showTotals: false },
 };
 
 export const EMPTY_META: DiagramMeta = { title: '', description: '', unit: '' };

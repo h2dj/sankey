@@ -52,6 +52,27 @@ export interface Settings {
   /** 같은 출발·도착 쌍: 자동 합산 / 별도 흐름 */
   duplicateMode: 'merge' | 'separate';
   numberFormat: { decimals: number | 'auto'; thousands: boolean };
+  /** 시기 축 배치(시기별로 열을 고정) */
+  timeline: TimelineSettings;
+}
+
+/** 시기(시간 축의 한 칸). 예: 2019년, 1단계 준비기 */
+export interface Period {
+  id: string;
+  label: string;
+}
+
+export interface TimelineSettings {
+  /** 켜면 노드를 지정한 시기의 열에 놓는다(연결 단계 깊이 대신) */
+  enabled: boolean;
+  /** 시간 순서대로 */
+  periods: Period[];
+  /** 정규화된 노드 이름 → 시기 id. 없는 노드는 연결을 따라 자동으로 놓는다 */
+  nodePeriods: Record<string, string>;
+  /** 시기마다 번갈아 칠한 배경 띠 */
+  showBands: boolean;
+  /** 시기 머리글 아래에 다른 시기에서 들어오고 나간 흐름 합계 */
+  showTotals: boolean;
 }
 
 export interface DiagramDoc {
@@ -75,7 +96,9 @@ export type IssueCode =
   | 'CYCLE'
   | 'IMBALANCE'
   | 'DISCONNECTED_GROUPS'
-  | 'ROW_LIMIT';
+  | 'ROW_LIMIT'
+  | 'TIME_BACKWARD'
+  | 'TIME_INFERRED';
 
 export interface Issue {
   level: IssueLevel;

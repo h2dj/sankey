@@ -147,6 +147,14 @@ function InteractiveChart({
   const interaction: ChartInteraction = {
     activeKey: currentKey,
     highlight,
+    activePeriodId: selection?.periodId ?? null,
+    onPeriodActivate: (periodId) => {
+      const p = model.periods.find((x) => x.id === periodId);
+      if (!p) return;
+      track('chart_select', { kind: 'period' });
+      if (selection?.periodId === periodId) selectionStore.getState().clear();
+      else selectionStore.getState().select({ rowIds: p.rowIds, periodId, from: 'chart' });
+    },
     onPointerEnter: (key, e) => {
       setHoverKey(key);
       showTooltip(key, { x: e.clientX, y: e.clientY });
@@ -227,6 +235,7 @@ function InteractiveChart({
           state={visibleTooltip}
           link={linkById.get(itemId(visibleTooltip.key, 'link'))}
           node={nodeById.get(itemId(visibleTooltip.key, 'node'))}
+          periods={model.periods}
           rowNumber={rowNumber}
         />
       )}
@@ -289,6 +298,15 @@ function incident(model: ChartModel, nodeId: string) {
 
 function fromSelection(model: ChartModel, sel: Selection) {
   if (sel.nodeId) return incident(model, sel.nodeId);
+  if (sel.periodId) {
+    const p = model.periods.find((x) => x.id === sel.periodId);
+    if (!p) return null;
+    const nodes = new Set(p.nodeIds);
+    const links = new Set(
+      model.links.filter((l) => nodes.has(l.source) || nodes.has(l.target)).map((l) => l.id),
+    );
+    return { links, nodes };
+  }
   const rows = new Set(sel.rowIds);
   const links = new Set<string>();
   const nodes = new Set<string>();

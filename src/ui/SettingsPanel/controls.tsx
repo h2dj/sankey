@@ -96,18 +96,33 @@ export function Select<T extends string>(props: {
   value: T;
   options: readonly (readonly [NoInfer<T>, string])[];
   onChange(v: NoInfer<T>): void;
+  disabled?: boolean;
+  /** 아래에 보일 짧은 설명(비활성 이유 등) */
+  hint?: string;
 }) {
   const id = useId();
+  const hintId = `${id}-hint`;
   return (
     <div className={styles.field}>
       <label htmlFor={id}>{props.label}</label>
-      <select id={id} value={props.value} onChange={(e) => props.onChange(e.target.value as T)}>
+      <select
+        id={id}
+        value={props.value}
+        disabled={props.disabled}
+        aria-describedby={props.hint ? hintId : undefined}
+        onChange={(e) => props.onChange(e.target.value as T)}
+      >
         {props.options.map(([value, label]) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
       </select>
+      {props.hint && (
+        <span id={hintId} className={styles.muted}>
+          {props.hint}
+        </span>
+      )}
     </div>
   );
 }

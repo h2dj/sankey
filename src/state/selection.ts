@@ -10,6 +10,8 @@ export interface Selection {
   rowIds: string[];
   linkId?: string;
   nodeId?: string;
+  /** 시기 머리글을 눌러 고른 시기 */
+  periodId?: string;
   from: 'chart' | 'table';
 }
 
