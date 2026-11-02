@@ -5,6 +5,7 @@ import type { Settings } from '../../core/types';
 import {
   BAND_FILL,
   BAND_LINE,
+  NOTE_MARK_COLOR,
   PERIOD_MUTED,
   linkAriaLabel,
   linkKey,
@@ -25,6 +26,8 @@ export interface ChartInteraction {
   onBlurItem(): void;
   onActivate(key: ItemKey): void;
   onKeyDown(key: ItemKey, e: KeyboardEvent<SVGElement>): void;
+  /** 노드를 두 번 누르면 그 노드의 메모 칸으로 */
+  onNodeNote(nodeId: string): void;
   /** 시기 머리글을 눌러 고른 시기 */
   activePeriodId: string | null;
   onPeriodActivate(periodId: string): void;
@@ -142,6 +145,7 @@ export function SankeyChart({ model, title, settings, interaction }: Props) {
             fillOpacity={hi && !hi.nodes.has(n.id) ? 0.35 : 1}
             data-node-id={n.id}
             {...itemProps(nodeKey(n.id), nodeAriaLabel(n))}
+            onDoubleClick={interaction ? () => interaction.onNodeNote(n.id) : undefined}
           >
             {!interaction && <title>{`${n.label}: ${n.valueText}`}</title>}
           </rect>
@@ -170,8 +174,31 @@ export function SankeyChart({ model, title, settings, interaction }: Props) {
           >
             {n.label}
             {settings.showValues && <tspan fillOpacity={0.7}>{` ${n.valueText}`}</tspan>}
+            {n.noteMark && (
+              <tspan fill={NOTE_MARK_COLOR} fontWeight={600} data-note-mark={n.id}>
+                {` ${n.noteMark}`}
+              </tspan>
+            )}
           </text>
         ))}
+        {model.nodes
+          .filter((n) => n.noteLines)
+          .flatMap((n) =>
+            n.noteLines!.map((line, i) => (
+              <text
+                key={`${n.id}-note-${i}`}
+                x={n.labelX}
+                y={n.labelY + settings.fontSize * (0.35 + 1.15 * (i + 1))}
+                textAnchor={n.labelAnchor}
+                fontSize={settings.fontSize * 0.85}
+                fill={PERIOD_MUTED}
+                fillOpacity={hi && !hi.nodes.has(n.id) ? 0.45 : 1}
+                data-note-line={n.id}
+              >
+                {line}
+              </text>
+            )),
+          )}
       </g>
 
       {model.periods.length > 0 && (

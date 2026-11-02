@@ -35,9 +35,12 @@ const BACKGROUND = '#ffffff';
 export async function exportDiagram(doc: DiagramDoc, opts: ExportOptions): Promise<ExportResult> {
   if (opts.format === 'csv') {
     return {
-      blob: new Blob([serializeCsv(doc.rows, doc.meta.unit, doc.settings.timeline)], {
-        type: 'text/csv;charset=utf-8',
-      }),
+      blob: new Blob(
+        [serializeCsv(doc.rows, doc.meta.unit, doc.settings.timeline, doc.nodeNotes)],
+        {
+          type: 'text/csv;charset=utf-8',
+        },
+      ),
       filename: safeFilename(opts.filename, 'csv'),
     };
   }
@@ -45,7 +48,7 @@ export async function exportDiagram(doc: DiagramDoc, opts: ExportOptions): Promi
   const graph = buildGraph(doc.rows, doc.settings);
   if (!graph.drawable)
     throw new Error('다이어그램을 그릴 수 없는 상태입니다. 입력 오류를 먼저 고치세요.');
-  const model = buildChartModel(graph, doc.rows, doc.meta, doc.settings, opts.width);
+  const model = buildChartModel(graph, doc.rows, doc.meta, doc.settings, opts.width, doc.nodeNotes);
   const base = {
     title: doc.meta.title,
     description: doc.meta.description,

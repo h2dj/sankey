@@ -33,6 +33,9 @@ export interface CsvMapping {
   /** 시기 모드: 출발·도착 노드의 시기 이름 열(선택) */
   sourcePeriod: number | null;
   targetPeriod: number | null;
+  /** 노드 메모 열(선택) */
+  sourceNote: number | null;
+  targetNote: number | null;
 }
 
 export interface ParsedCsv {
@@ -125,6 +128,8 @@ const ALIASES: Record<keyof CsvMapping, readonly string[]> = {
   memo: ['메모', '비고', 'memo', 'note', 'notes', 'comment'],
   sourcePeriod: ['출발시기', '출발기간', '시작시기', 'sourceperiod', 'fromperiod', 'sourcetime'],
   targetPeriod: ['도착시기', '도착기간', 'targetperiod', 'toperiod', 'targettime'],
+  sourceNote: ['출발노드메모', '출발메모', 'sourcenote', 'fromnote'],
+  targetNote: ['도착노드메모', '도착메모', 'targetnote', 'tonote'],
 };
 
 /** 비교용 열 이름: 괄호 안 내용(단위)을 떼고 공백·밑줄을 지운 소문자 */
@@ -198,6 +203,8 @@ export function guessMapping(header: readonly string[] | null, columnCount: numb
     memo,
     sourcePeriod: found.sourcePeriod ?? null,
     targetPeriod: found.targetPeriod ?? null,
+    sourceNote: found.sourceNote ?? null,
+    targetNote: found.targetNote ?? null,
   };
 }
 
@@ -278,6 +285,8 @@ export interface RecordsToRowsResult {
   nodePeriods: Map<string, string>;
   /** 같은 노드에 서로 다른 시기가 적힌 경우의 수(처음 값을 썼음) */
   periodConflicts: number;
+  /** 노드 메모 열에서 읽은 노드(정규화 이름) → 메모. 처음 나온 값을 쓴다 */
+  nodeNotes: Map<string, string>;
 }
 
 export function recordsToRows(
@@ -292,6 +301,11 @@ export function recordsToRows(
   let dropped = 0;
   const nodePeriods = new Map<string, string>();
   let periodConflicts = 0;
+  const nodeNotes = new Map<string, string>();
+  const noteNote = (node: string, text: string) => {
+    const id = normalizeName(node);
+    if (id && text && !nodeNotes.has(id)) nodeNotes.set(id, text);
+  };
   const notePeriod = (node: string, label: string) => {
     const id = normalizeName(node);
     if (!id || !label) return;
@@ -313,8 +327,10 @@ export function recordsToRows(
     rows.push(createRow({ source, target, value, ...(group && { group }), ...(memo && { memo }) }));
     notePeriod(source, cell(r, mapping.sourcePeriod));
     notePeriod(target, cell(r, mapping.targetPeriod));
+    noteNote(source, cell(r, mapping.sourceNote));
+    noteNote(target, cell(r, mapping.targetNote));
   }
-  return { rows, dropped, nodePeriods, periodConflicts };
+  return { rows, dropped, nodePeriods, periodConflicts, nodeNotes };
 }
 
 // ─── 4. 내보내기 ────────────────────────────────────────────────────────────
@@ -333,13 +349,21 @@ function unescapeCell(v: string): string {
 }
 
 /** 표 데이터 → CSV(UTF-8 BOM, CRLF). 빈 행은 뺀다. 단위가 있으면 값 열 이름에 붙인다. */
-export function serializeCsv(rows: readonly Row[], unit = '', timeline?: TimelineSettings): string {
+export function serializeCsv(
+  rows: readonly Row[],
+  unit = '',
+  timeline?: TimelineSettings,
+  nodeNotes: Readonly<Record<string, string>> = {},
+): string {
   // 시기 모드에서 노드에 시기를 정해 두었으면 출발·도착 시기 열을 더한다(다시 불러오면 복원).
   const periodLabel = new Map(timeline?.periods.map((p) => [p.id, p.label]));
   const withPeriods =
     !!timeline?.enabled && Object.values(timeline.nodePeriods).some((id) => periodLabel.has(id));
   const periodOf = (node: string) =>
     periodLabel.get(timeline!.nodePeriods[normalizeName(node)] ?? '') ?? '';
+  // 노드 메모가 표의 노드에 하나라도 있으면 출발·도착 노드 메모 열을 더한다.
+  const noteOf = (node: string) => nodeNotes[normalizeName(node)]?.trim() ?? '';
+  const withNotes = rows.some((r) => noteOf(r.source) || noteOf(r.target));
   const header = [
     '출발 노드',
     '도착 노드',
@@ -347,12 +371,14 @@ export function serializeCsv(rows: readonly Row[], unit = '', timeline?: Timelin
     '색상 그룹',
     '메모',
     ...(withPeriods ? ['출발 시기', '도착 시기'] : []),
+    ...(withNotes ? ['출발 노드 메모', '도착 노드 메모'] : []),
   ];
   const lines = [header.map(escapeCell).join(',')];
   for (const r of rows) {
     const cells = [r.source, r.target, r.value, r.group ?? '', r.memo ?? ''];
     if (cells.every((c) => c.trim() === '')) continue;
     if (withPeriods) cells.push(periodOf(r.source), periodOf(r.target));
+    if (withNotes) cells.push(noteOf(r.source), noteOf(r.target));
     lines.push(cells.map(escapeCell).join(','));
   }
   return CSV_BOM + lines.join('\r\n') + '\r\n';

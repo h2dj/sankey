@@ -128,4 +128,33 @@ describe('editor store', () => {
     s().importRows([createRow({ source: 'A', target: 'B', value: '1' })], 'append');
     expect(s().doc.rows).toHaveLength(2);
   });
+
+  it('노드 메모: 연속 입력은 한 번의 실행 취소, 빈 글은 지움', () => {
+    const { s, clock } = setup();
+    for (const t of ['강', '강사', '강사비']) {
+      s().setNodeNote('A', t);
+      clock.advance(200);
+    }
+    expect(s().doc.nodeNotes).toEqual({ A: '강사비' });
+    expect(s().past).toHaveLength(1);
+    clock.advance(5000);
+    s().setNodeNote('A', '  ');
+    expect(s().doc.nodeNotes).toEqual({});
+    s().undo();
+    expect(s().doc.nodeNotes).toEqual({ A: '강사비' });
+    s().undo();
+    expect(s().doc.nodeNotes).toEqual({});
+  });
+
+  it('CSV 메모: 바꾸기는 CSV 메모로, 추가는 덧씌우기, 메모 열이 없으면 유지', () => {
+    const { s } = setup();
+    const r = createRow({ source: 'X', target: 'Y', value: '1' });
+    s().setNodeNote('Z', '기존');
+    s().importRows([r], 'append', undefined, undefined, new Map([['X', '새 메모']]));
+    expect(s().doc.nodeNotes).toEqual({ Z: '기존', X: '새 메모' });
+    s().importRows([r], 'replace', undefined, undefined, new Map([['Y', '바꿈']]));
+    expect(s().doc.nodeNotes).toEqual({ Y: '바꿈' });
+    s().importRows([r], 'replace');
+    expect(s().doc.nodeNotes).toEqual({ Y: '바꿈' });
+  });
 });

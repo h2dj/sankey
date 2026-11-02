@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, SCHEMA_VERSION, createRow } from './config';
+import { DEFAULT_SETTINGS, LIMITS, SCHEMA_VERSION, createRow } from './config';
 import type { DiagramDoc, Period, Row, Settings, TimelineSettings } from './types';
 
 /**
@@ -122,6 +122,7 @@ function migrate(version: number, input: unknown): DiagramDoc | null {
     schemaVersion: SCHEMA_VERSION,
     meta: { title: text('title'), description: text('description'), unit: text('unit') },
     rows: rows.length > 0 ? rows : [createRow()],
+    nodeNotes: sanitizeNotes(d.nodeNotes),
     settings: mergeSettings(saved),
     updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : new Date().toISOString(),
   };
@@ -145,6 +146,8 @@ function mergeSettings(saved: Partial<Settings>): Settings {
           : key === 'timeline'
             ? sanitizeTimeline(v as Record<string, unknown>)
             : { ...def, ...v };
+    } else if (key === 'noteDisplay' && !['tooltip', 'below', 'footnote'].includes(v as string)) {
+      continue;
     } else {
       out[key] = v;
     }
@@ -184,4 +187,16 @@ function sanitizeTimeline(v: Record<string, unknown>): TimelineSettings {
     showBands: bool('showBands'),
     showTotals: bool('showTotals'),
   };
+}
+
+/** 노드 메모: 문자열만, 앞뒤 공백 제거, 빈 메모는 버리고 최대 길이로 자른다. */
+export function sanitizeNotes(v: unknown): Record<string, string> {
+  if (!isObject(v)) return {};
+  const out: Record<string, string> = {};
+  for (const [node, text] of Object.entries(v)) {
+    if (typeof text !== 'string' || !node) continue;
+    const t = text.trim().slice(0, LIMITS.maxNoteLength);
+    if (t) out[node] = t;
+  }
+  return out;
 }

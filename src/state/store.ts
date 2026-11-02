@@ -28,6 +28,8 @@ export interface EditorActions {
   /** 붙여넣기. 버린 행 수를 돌려준다. */
   paste(startRowId: string, startField: RowField, matrix: string[][]): { droppedRows: number };
   setMeta(patch: Partial<DiagramMeta>): void;
+  /** 노드 메모. 빈 글이면 지운다. 같은 노드를 연달아 입력하면 실행 취소 한 번으로 묶는다 */
+  setNodeNote(nodeId: string, text: string): void;
   /** coalesce=false면 연속 변경으로 묶지 않고 실행 취소 한 단계로 남긴다(버튼 조작 등) */
   setSettings(patch: Partial<Settings>, opts?: { coalesce?: boolean }): void;
   /**
@@ -41,6 +43,8 @@ export interface EditorActions {
     unit?: string,
     /** CSV 시기 열에서 읽은 노드 → 시기 이름. 있으면 시기 모드를 켜고 시기를 만든다 */
     nodePeriodLabels?: ReadonlyMap<string, string>,
+    /** CSV 노드 메모 열에서 읽은 노드 → 메모 */
+    nodeNotes?: ReadonlyMap<string, string>,
   ): { dropped: number; periodsAssigned: number };
   /** 예시 불러오기 등 문서 전체 교체. 실행 취소로 되돌릴 수 있다. */
   replaceDoc(doc: DiagramDoc): void;
@@ -114,6 +118,17 @@ export function createEditorStore(
         track('settings_change', { key: keys });
       },
 
+      setNodeNote(nodeId, text) {
+        const { doc } = get();
+        const t = text.slice(0, LIMITS.maxNoteLength);
+        if ((doc.nodeNotes[nodeId] ?? '') === t) return;
+        const nodeNotes = { ...doc.nodeNotes };
+        if (t.trim()) nodeNotes[nodeId] = t;
+        else delete nodeNotes[nodeId];
+        commit({ ...doc, nodeNotes }, `note:${nodeId}`);
+        track('edit');
+      },
+
       setSettings(patch, opts) {
         const { doc } = get();
         // 슬라이더·색 선택기를 끄는 동안의 연속 변경은 한 번의 실행 취소로 묶는다.
@@ -125,7 +140,7 @@ export function createEditorStore(
         track('settings_change', { key: keys });
       },
 
-      importRows(rows, mode, unit, nodePeriodLabels) {
+      importRows(rows, mode, unit, nodePeriodLabels, nodeNotes) {
         const { doc } = get();
         const kept = mode === 'append' ? doc.rows.filter((r) => !isBlank(r)) : [];
         const room = Math.max(0, LIMITS.maxRows - kept.length);
@@ -167,6 +182,16 @@ export function createEditorStore(
           rows: nextRows.length > 0 ? nextRows : [createRow()],
           meta: setUnit ? { ...doc.meta, unit } : doc.meta,
           settings,
+          // 메모 열이 있으면: 바꾸기는 CSV 메모로, 추가는 기존에 덧씌운다. 없으면 기존 메모 유지.
+          nodeNotes:
+            nodeNotes && nodeNotes.size > 0
+              ? {
+                  ...(mode === 'append' ? doc.nodeNotes : {}),
+                  ...Object.fromEntries(
+                    [...nodeNotes].map(([k, v]) => [k, v.slice(0, LIMITS.maxNoteLength)]),
+                  ),
+                }
+              : doc.nodeNotes,
         });
         return { dropped: rows.length - added.length, periodsAssigned: labels.size };
       },

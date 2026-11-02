@@ -146,3 +146,27 @@
   gap: 8px;
   margin-top: 12px;
 }
+
+.tipNote {
+  white-space: pre-wrap;
+  border-left: 3px solid var(--color-accent);
+  padding-left: 6px;
+}
+
+.footnotes {
+  margin: 0;
+  padding: 8px 12px 8px 12px;
+  list-style: none;
+  font-size: 0.8125rem;
+  background: var(--color-surface-alt);
+  border-radius: 6px;
+}
+
+.footnotes li + li {
+  margin-top: 2px;
+}
+
+.footMark {
+  color: var(--color-accent);
+  font-weight: 600;
+}

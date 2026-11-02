@@ -1,6 +1,8 @@
 import type { ChartModel } from './chartModel';
 import { TEXT_DARK } from './palette';
-import { estimateTextWidth } from './text';
+import { wrapText } from './text';
+
+export { wrapText };
 import type { Settings } from './types';
 
 export const FONT_STACK =
@@ -9,6 +11,7 @@ const TEXT_MUTED = '#57606A';
 /** 시기 띠(미리보기 SankeyChart와 같은 값) */
 const BAND_FILL = '#EEF2F7';
 const BAND_LINE = '#C9D1D9';
+const NOTE_COLOR = '#2F6FB3';
 
 export interface SvgDocumentOptions {
   title: string;
@@ -39,33 +42,6 @@ const esc = (s: string) =>
     .replaceAll("'", '&#39;');
 
 const n = (v: number) => String(Math.round(v * 100) / 100);
-
-/** 폭에 맞춰 단어 단위로 줄을 나눈다. 한 단어가 너무 길면 글자 단위로 자른다. */
-export function wrapText(text: string, maxWidth: number, fontSize: number): string[] {
-  const lines: string[] = [];
-  for (const paragraph of text.split(/\r?\n/)) {
-    let line = '';
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const candidate = line ? `${line} ${word}` : word;
-      if (estimateTextWidth(candidate, fontSize) <= maxWidth) {
-        line = candidate;
-        continue;
-      }
-      if (line) lines.push(line);
-      line = '';
-      // 단어 하나가 폭을 넘으면 글자 단위로 자른다.
-      for (const ch of word) {
-        if (estimateTextWidth(line + ch, fontSize) > maxWidth && line) {
-          lines.push(line);
-          line = '';
-        }
-        line += ch;
-      }
-    }
-    if (line) lines.push(line);
-  }
-  return lines;
-}
 
 /**
  * 내보내기용 독립 SVG 문서(제목·설명·차트·단위). 화면 상호작용 속성은 넣지 않는다.
@@ -101,6 +77,22 @@ export function renderSvgDocument(model: ChartModel, opts: SvgDocumentOptions): 
 
   const chartTop = y;
   y += model.height;
+
+  // 각주 모드: 차트 아래에 "[1] 노드 — 메모" 목록
+  const notesBlock: string[] = [];
+  if (model.footnotes.length > 0) {
+    const noteFs = fs * 0.9;
+    y += fs * 0.6;
+    for (const f of model.footnotes) {
+      const lines = wrapText(`${f.mark} ${f.label} — ${f.text}`, model.width, noteFs);
+      for (const line of lines) {
+        y += noteFs * 1.35;
+        notesBlock.push(
+          `<text x="${pad}" y="${n(y)}" font-size="${n(noteFs)}" fill="${TEXT_DARK}">${esc(line)}</text>`,
+        );
+      }
+    }
+  }
 
   let footer = '';
   if (opts.includeHeader && opts.unit.trim()) {
@@ -170,9 +162,17 @@ export function renderSvgDocument(model: ChartModel, opts: SvgDocumentOptions): 
     const value = opts.settings.showValues
       ? `<tspan fill-opacity="0.7"> ${esc(node.valueText)}</tspan>`
       : '';
+    const mark = node.noteMark
+      ? `<tspan fill="${NOTE_COLOR}" font-weight="600"> ${esc(node.noteMark)}</tspan>`
+      : '';
     parts.push(
-      `<text x="${n(node.labelX)}" y="${n(node.labelY)}" dy="0.35em" text-anchor="${node.labelAnchor}">${esc(node.label)}${value}</text>`,
+      `<text x="${n(node.labelX)}" y="${n(node.labelY)}" dy="0.35em" text-anchor="${node.labelAnchor}">${esc(node.label)}${value}${mark}</text>`,
     );
+    node.noteLines?.forEach((line, i) => {
+      parts.push(
+        `<text x="${n(node.labelX)}" y="${n(node.labelY + fs * (0.35 + 1.15 * (i + 1)))}" text-anchor="${node.labelAnchor}" font-size="${n(fs * 0.85)}" fill="${TEXT_MUTED}">${esc(line)}</text>`,
+      );
+    });
   }
   parts.push('</g>');
   for (const p of model.periods) {
@@ -185,7 +185,7 @@ export function renderSvgDocument(model: ChartModel, opts: SvgDocumentOptions): 
       );
     }
   }
-  parts.push('</g>', footer, '</svg>');
+  parts.push('</g>', ...notesBlock, footer, '</svg>');
 
   return { svg: parts.filter(Boolean).join('\n'), width, height };
 }
@@ -197,6 +197,8 @@ export function documentText(model: ChartModel, opts: SvgDocumentOptions) {
     opts.includeHeader && opts.unit ? `단위: ${opts.unit}` : '',
     ...model.nodes.map((nd) => `${nd.label} ${opts.settings.showValues ? nd.valueText : ''}`),
     ...model.periods.map((p) => p.totalsText),
+    ...model.nodes.flatMap((nd) => [nd.noteMark ?? '', ...(nd.noteLines ?? [])]),
+    ...model.footnotes.map((f) => `${f.mark} ${f.label} — ${f.text}`),
   ].join('\n');
   const bold = [opts.includeHeader ? opts.title : '', ...model.periods.map((p) => p.label)].join(
     '\n',

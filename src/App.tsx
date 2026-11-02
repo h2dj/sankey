@@ -46,9 +46,16 @@ export function App() {
   const model = useMemo(
     () =>
       graph.drawable
-        ? buildChartModel(graph, settled.rows, settled.meta, settled.settings, chartWidth)
+        ? buildChartModel(
+            graph,
+            settled.rows,
+            settled.meta,
+            settled.settings,
+            chartWidth,
+            settled.nodeNotes,
+          )
         : null,
-    [graph, settled.rows, settled.meta, settled.settings, chartWidth],
+    [graph, settled.rows, settled.meta, settled.settings, chartWidth, settled.nodeNotes],
   );
   const issuesByRow = useMemo(() => groupIssuesByRow(graph.issues), [graph.issues]);
 

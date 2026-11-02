@@ -40,7 +40,7 @@ test('엑셀 기본 CSV(EUC-KR)를 읽고 값 열의 단위를 가져온다', as
   await openAndPick(page, 'cp949.csv');
   await expect(dialog(page)).toContainText('EUC-KR');
   await expect(dialog(page)).toContainText('단위 "백만 원"');
-  await expect(dialog(page).getByLabel('출발 노드')).toHaveValue('0');
+  await expect(dialog(page).getByLabel('출발 노드', { exact: true })).toHaveValue('0');
   await expect(dialog(page).getByLabel('색상 그룹')).toHaveValue('3');
   await dialog(page).getByRole('button', { name: '가져오기' }).click();
   await expect(cell(page, 1, '출발 노드')).toHaveValue('전체 예산');
@@ -68,10 +68,10 @@ test('머리글 없는 파일: 열을 직접 맞춘다', async ({ page }) => {
   await expect(dialog(page).getByTestId('import-summary')).toHaveText('3행을 읽었습니다.');
 
   // 같은 열을 두 번 고르면 막는다
-  await dialog(page).getByLabel('도착 노드').selectOption('0');
+  await dialog(page).getByLabel('도착 노드', { exact: true }).selectOption('0');
   await expect(dialog(page).getByRole('alert')).toContainText('서로 다른 열');
   await expect(dialog(page).getByRole('button', { name: '가져오기' })).toBeDisabled();
-  await dialog(page).getByLabel('도착 노드').selectOption('1');
+  await dialog(page).getByLabel('도착 노드', { exact: true }).selectOption('1');
   await expect(dialog(page).getByRole('button', { name: '가져오기' })).toBeEnabled();
 });
 
